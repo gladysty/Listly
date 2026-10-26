@@ -1,1167 +1,627 @@
 "use strict";
 
-
-/* =================================
-   ELEMENTS AND DEFAULT SETTINGS
-================================= */
-
 const $ = id => document.getElementById(id);
 
-const paper = $("paper");
-const itemsBody = $("items");
+const STORAGE_KEY = "listly_saved_lists_v1";
 
-let rows = [];
-let nextId = 1;
-
-const DEFAULTS = {
-    original: {
-        background: "#07151b",
-        text: "#f3f6ff",
-        accent: "#10e6a3",
-        line: "#245c7b",
-        head: "#102632"
-    },
-
-    classic: {
-        background: "#fffaf0",
-        text: "#343a30",
-        accent: "#648057",
-        line: "#ded8c8",
-        head: "#eee8d9"
-    },
-
-    market: {
-        background: "#fff7e8",
-        text: "#3c3024",
-        accent: "#c34e2d",
-        line: "#e4c99e",
-        head: "#f2dfb9"
-    },
-
-    minimal: {
-        background: "#ffffff",
-        text: "#252525",
-        accent: "#252525",
-        line: "#dddddd",
-        head: "#f4f4f4"
-    }
+const templates = {
+  cream: {
+    background: "#fff9eb",
+    color: "#30382b",
+    accent: "#66845c"
+  },
+  green: {
+    background: "#294b3c",
+    color: "#f8f2df",
+    accent: "#e3c878"
+  },
+  pink: {
+    background: "#f8e3e7",
+    color: "#533b43",
+    accent: "#b35f78"
+  },
+  dark: {
+    background: "#101b20",
+    color: "#f0f5f4",
+    accent: "#40e2ae"
+  }
 };
 
-const CURRENCY = "NGN";
+const currencies = {
+  NGN: "₦",
+  USD: "$",
+  GBP: "£",
+  EUR: "€",
+  GHS: "GH₵",
+  KES: "KSh",
+  ZAR: "R",
+  CAD: "CA$",
+  INR: "₹"
+};
 
+let items = [];
+let savedLists = [];
+let activeTemplate = "cream";
+let accentColor = "#66845c";
+let nextId = 1;
+let activeSavedId = null;
 
-/* =================================
-   CURRENCY AND NUMBER HELPERS
-================================= */
+function makeId() {
+  return (window.crypto && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, character => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[character]);
+}
+
+function getCurrency() {
+  return $("currency").value || "NGN";
+}
 
 function money(value) {
-    return new Intl.NumberFormat("en-NG", {
-        style: "currency",
-        currency: CURRENCY,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }).format(Number(value) || 0);
+  const amount = Number(value) || 0;
+  const currency = getCurrency();
+
+  try {
+    return new Intl.NumberFormat("en", {
+      style: "currency",
+      currency,
+      currencyDisplay: "symbol",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  } catch {
+    return `${currencies[currency] || currency}${amount.toFixed(2)}`;
+  }
 }
 
-function numberValue(value) {
-    const number = Number(value);
+function readItemsFromInputs() {
+  document.querySelectorAll(".item-row").forEach(row => {
+    const id = row.dataset.id;
+    const item = items.find(entry => entry.id === id);
+    if (!item) return;
 
-    return Number.isFinite(number) && number > 0
-        ? number
-        : 0;
+    item.name = row.querySelector(".item-name").value;
+    item.qty = row.querySelector(".item-qty").value;
+    item.price = row.querySelector(".item-price").value;
+  });
 }
 
-function quantityValue(value) {
-    const text = String(value ?? "").trim();
+function addItem(data = {}) {
+  const item = {
+    id: makeId(),
+    name: String(data.name || ""),
+    qty: data.qty ?? 1,
+    price: data.price ?? ""
+  };
 
-    if (!text) return 0;
+  items.push(item);
+  renderItems();
 
-    // Support fractions such as 1/2 and 3/4.
-    const fraction = text.match(/^(\d+)\s*\/\s*(\d+)$/);
+  const rows = document.querySelectorAll(".item-row");
+  const last = rows[rows.length - 1];
+  if (last) last.querySelector(".item-name").focus();
 
-    if (fraction && Number(fraction[2]) !== 0) {
-        return Number(fraction[1]) / Number(fraction[2]);
-    }
-
-    // Support decimal and whole quantities.
-    const number = Number(text);
-
-    if (Number.isFinite(number) && number > 0) {
-        return number;
-    }
-
-    /*
-      For text quantities such as "2 packs", calculate using
-      the first number while preserving the text in the list.
-    */
-    const match = text.match(/^\s*(\d+(?:\.\d+)?)/);
-
-    if (match) {
-        return numberValue(match[1]);
-    }
-
-    return 0;
+  renderPreview();
 }
 
-function escapeHTML(value) {
-    return String(value ?? "").replace(/[&<>"']/g, character => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-    })[character]);
+function renderItems() {
+  const container = $("itemsList");
+
+  if (!items.length) {
+    container.innerHTML = "";
+    $("itemCount").textContent = "0 items";
+    renderPreview();
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="item-labels">
+      <span>Item</span>
+      <span>Quantity</span>
+      <span>Unit price</span>
+      <span></span>
+    </div>
+    ${items.map(item => `
+      <div class="item-row" data-id="${escapeHtml(item.id)}">
+        <input
+          class="item-name"
+          type="text"
+          maxlength="100"
+          placeholder="Item name"
+          aria-label="Item name"
+          value="${escapeHtml(item.name)}"
+        >
+        <input
+          class="item-qty"
+          type="number"
+          min="0"
+          step="any"
+          aria-label="Quantity"
+          placeholder="Qty"
+          value="${escapeHtml(item.qty)}"
+        >
+        <input
+          class="item-price"
+          type="number"
+          min="0"
+          step="0.01"
+          aria-label="Unit price"
+          placeholder="Price"
+          value="${escapeHtml(item.price)}"
+        >
+        <button class="remove-item" type="button" aria-label="Remove item">×</button>
+      </div>
+    `).join("")}
+  `;
+
+  const namedCount = items.filter(item => item.name.trim()).length;
+  $("itemCount").textContent = `${namedCount} item${namedCount === 1 ? "" : "s"}`;
 }
 
+function totalCost() {
+  return items.reduce((sum, item) => {
+    const quantity = Math.max(0, Number(item.qty) || 0);
+    const price = Math.max(0, Number(item.price) || 0);
+    return sum + quantity * price;
+  }, 0);
+}
 
-/* =================================
-   ADDING AND RENDERING ROWS
-================================= */
+function renderPreview() {
+  $("previewTitle").textContent =
+    $("listTitle").value.trim() || "Shopping List";
 
-function addRow(name = "", quantity = "", price = "") {
+  $("previewSubtitle").textContent = $("subtitle").value.trim();
 
-    const row = {
-        id: nextId++,
-        name,
-        quantity,
-        price
-    };
+  const total = totalCost();
+  $("previewTotal").textContent = money(total);
 
-    rows.push(row);
+  const budgetRaw = $("budget").value;
+  const hasBudget = budgetRaw !== "" && Number(budgetRaw) >= 0;
+  const budget = hasBudget ? Number(budgetRaw) : null;
 
-    renderRows();
+  $("previewBudgetBlock").style.display = hasBudget ? "" : "none";
+  $("previewDifferenceBlock").style.display = hasBudget ? "" : "none";
 
-    const input = itemsBody.querySelector(
-        `tr[data-id="${row.id}"] .name-input`
+  if (hasBudget) {
+    const difference = budget - total;
+
+    $("previewBudget").textContent = money(budget);
+    $("differenceLabel").textContent =
+      difference >= 0 ? "LEFT OVER" : "OVER BUDGET";
+
+    $("previewDifference").textContent = money(Math.abs(difference));
+    $("previewDifference").style.color =
+      difference < 0 ? "#bd5b48" : "var(--preview-accent)";
+  }
+
+  const namedItems = items.filter(item => item.name.trim());
+
+  if (!namedItems.length) {
+    $("previewItems").innerHTML =
+      '<p class="empty-preview">Your items will appear here. Add your first item above!</p>';
+  } else {
+    $("previewItems").innerHTML = namedItems.map(item => {
+      const quantity = Math.max(0, Number(item.qty) || 0);
+      const price = Math.max(0, Number(item.price) || 0);
+
+      const showQuantity = $("showQuantities").checked;
+      const showPrice = $("showPrices").checked;
+
+      const meta = [
+        showQuantity ? `× ${quantity}` : "",
+        showPrice && item.price !== "" ? money(quantity * price) : ""
+      ].filter(Boolean).join(" · ");
+
+      return `
+        <div class="preview-item">
+          <span class="preview-check"></span>
+          <span class="preview-item-name">${escapeHtml(item.name)}</span>
+          ${meta ? `<span class="preview-item-meta">${escapeHtml(meta)}</span>` : ""}
+        </div>
+      `;
+    }).join("");
+  }
+
+  const preview = $("listPreview");
+  preview.className = `list-preview theme-${activeTemplate}`;
+  preview.style.background = templates[activeTemplate].background;
+  preview.style.color = templates[activeTemplate].color;
+  preview.style.setProperty("--preview-accent", accentColor);
+}
+
+function currentList() {
+  readItemsFromInputs();
+
+  return {
+    id: activeSavedId || makeId(),
+    title: $("listTitle").value.trim() || "Shopping List",
+    currency: getCurrency(),
+    budget: $("budget").value,
+    subtitle: $("subtitle").value,
+    items: items.map(({ name, qty, price }) => ({ name, qty, price })),
+    template: activeTemplate,
+    accentColor,
+    showQuantities: $("showQuantities").checked,
+    showPrices: $("showPrices").checked,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function loadList(data) {
+  $("listTitle").value = data.title || "Shopping List";
+  $("currency").value = currencies[data.currency] ? data.currency : "NGN";
+  $("budget").value = data.budget ?? "";
+  $("subtitle").value = data.subtitle || "";
+
+  activeTemplate = templates[data.template] ? data.template : "cream";
+  accentColor = data.accentColor || templates[activeTemplate].accent;
+  activeSavedId = data.id || null;
+
+  $("showQuantities").checked = data.showQuantities !== false;
+  $("showPrices").checked = data.showPrices !== false;
+
+  items = (Array.isArray(data.items) ? data.items : []).map(item => ({
+    id: makeId(),
+    name: String(item.name || ""),
+    qty: item.qty ?? 1,
+    price: item.price ?? ""
+  }));
+
+  document.querySelectorAll(".template-option").forEach(button => {
+    button.classList.toggle(
+      "active",
+      button.dataset.template === activeTemplate
     );
+  });
 
-    if (input) {
-        input.focus();
-    }
+  document.querySelectorAll(".color-dot").forEach(button => {
+    button.classList.toggle(
+      "selected",
+      button.dataset.color === accentColor
+    );
+  });
+
+  renderItems();
+  renderPreview();
+  showStatus("List loaded.");
 }
 
-function renderRows() {
-
-    itemsBody.innerHTML = rows.map((row, index) => `
-
-        <tr data-id="${row.id}">
-
-            <td class="row-number">
-                ${index + 1}
-            </td>
-
-            <td>
-                <input
-                    class="cell-input name-input"
-                    type="text"
-                    aria-label="Item name"
-                    placeholder="Item name"
-                    value="${escapeHTML(row.name)}"
-                >
-            </td>
-
-            <td>
-                <input
-                    class="cell-input quantity-input"
-                    type="text"
-                    inputmode="decimal"
-                    aria-label="Quantity"
-                    placeholder="e.g. 2"
-                    value="${escapeHTML(row.quantity)}"
-                >
-            </td>
-
-            <td>
-                <input
-                    class="cell-input price-input"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    inputmode="decimal"
-                    aria-label="Unit price"
-                    placeholder="Unit price"
-                    value="${escapeHTML(row.price)}"
-                >
-
-                <div class="line-amount">—</div>
-            </td>
-
-            <td class="action-col">
-                <button
-                    class="remove-row"
-                    type="button"
-                    aria-label="Remove item"
-                    title="Remove item"
-                >×</button>
-            </td>
-
-        </tr>
-
-    `).join("");
-
-    updateTotals();
+function readSavedLists() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    return Array.isArray(stored) ? stored : [];
+  } catch (error) {
+    console.error("Could not read saved lists:", error);
+    return [];
+  }
 }
 
-
-/* =================================
-   READ THE VALUES IN THE TABLE
-================================= */
-
-function readRows() {
-
-    itemsBody.querySelectorAll("tr").forEach(tr => {
-
-        const id = Number(tr.dataset.id);
-
-        const row = rows.find(item => item.id === id);
-
-        if (!row) return;
-
-        row.name = tr.querySelector(".name-input").value;
-        row.quantity = tr.querySelector(".quantity-input").value;
-        row.price = tr.querySelector(".price-input").value;
-
-    });
+function persistSavedLists() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(savedLists));
+    return true;
+  } catch (error) {
+    console.error("Could not save lists:", error);
+    showStatus("Could not save. Browser storage may be full or unavailable.", true);
+    return false;
+  }
 }
 
+function renderSavedLists() {
+  const container = $("savedLists");
 
-/* =================================
-   CALCULATIONS
-================================= */
+  if (!savedLists.length) {
+    container.innerHTML =
+      '<p class="empty-saved">Your saved lists will show up here.</p>';
+    return;
+  }
 
-function calculateTotal() {
+  container.innerHTML = savedLists.map(list => {
+    const count = (list.items || []).filter(
+      item => String(item.name || "").trim()
+    ).length;
 
-    return rows.reduce((sum, row) => {
-
-        const quantity = quantityValue(row.quantity);
-        const price = numberValue(row.price);
-
-        return sum + quantity * price;
-
+    const total = (list.items || []).reduce((sum, item) => {
+      return sum
+        + Math.max(0, Number(item.qty) || 0)
+        * Math.max(0, Number(item.price) || 0);
     }, 0);
-}
 
-function updateTotals() {
-
-    let total = 0;
-
-    itemsBody.querySelectorAll("tr").forEach(tr => {
-
-        const row = rows.find(
-            item => item.id === Number(tr.dataset.id)
-        );
-
-        if (!row) return;
-
-        const quantity = quantityValue(row.quantity);
-        const price = numberValue(row.price);
-
-        const amount = quantity * price;
-
-        total += amount;
-
-        const amountElement = tr.querySelector(".line-amount");
-
-        if (row.quantity.trim() !== "" && row.price !== "") {
-            amountElement.textContent = money(amount);
-        } else {
-            amountElement.textContent = "—";
-        }
-
-    });
-
-    $("totalInside").textContent = money(total);
-    $("totalOutside").textContent = money(total);
-
-    const budgetText = $("budget").value.trim();
-
-    const hasBudget =
-        budgetText !== "" &&
-        Number.isFinite(Number(budgetText)) &&
-        Number(budgetText) >= 0;
-
-    const budget = hasBudget ? Number(budgetText) : null;
-
-    const remaining = hasBudget ? budget - total : null;
-
-    $("budgetInside").textContent =
-        hasBudget ? money(budget) : "—";
-
-    $("remainingInside").textContent =
-        hasBudget ? money(remaining) : "—";
-
-    $("remainingOutside").textContent =
-        hasBudget ? money(remaining) : "—";
-
-    const overBudget = remaining !== null && remaining < 0;
-
-    $("remainingInside").style.color = overBudget
-        ? "#ff8277"
-        : "";
-
-    $("remainingOutside").style.color = overBudget
-        ? "#b43e31"
-        : "";
-
-    return {
-        total,
-        hasBudget,
-        budget,
-        remaining
-    };
-}
-
-
-/* =================================
-   TABLE INTERACTIONS
-================================= */
-
-$("addRow").addEventListener("click", () => {
-    addRow();
-});
-
-$("clearRows").addEventListener("click", () => {
-
-    rows = [];
-
-    renderRows();
-
-    $("status").textContent = "All items cleared.";
-
-});
-
-itemsBody.addEventListener("input", () => {
-
-    readRows();
-
-    updateTotals();
-
-});
-
-itemsBody.addEventListener("click", event => {
-
-    const button = event.target.closest(".remove-row");
-
-    if (!button) return;
-
-    const rowElement = button.closest("tr");
-
-    const id = Number(rowElement.dataset.id);
-
-    rows = rows.filter(row => row.id !== id);
-
-    renderRows();
-
-    $("status").textContent = "Item removed.";
-
-});
-
-
-/* =================================
-   TEMPLATE SELECTION
-================================= */
-
-function selectedTemplate() {
-    return $("template").value;
-}
-
-function applyTemplate(template, resetColour = true) {
-
-    if (!DEFAULTS[template]) {
-        template = "original";
-    }
-
-    paper.className = `paper ${template}`;
-
-    if (resetColour) {
-        $("background").value = DEFAULTS[template].background;
-    }
-
-    applyBackground();
-
-    /*
-      The market template uses a warm background and distinctive
-      card layout. The minimalist template intentionally hides
-      its decorative budget panel and footer.
-    */
-}
-
-$("template").addEventListener("change", () => {
-
-    applyTemplate(selectedTemplate(), true);
-
-    $("status").textContent = "Template changed.";
-
-});
-
-
-/* =================================
-   BACKGROUND COLOUR CUSTOMISATION
-================================= */
-
-function applyBackground() {
-
-    paper.style.setProperty(
-        "--paper-bg",
-        $("background").value
-    );
-
-}
-
-$("background").addEventListener("input", () => {
-
-    applyBackground();
-
-});
-
-$("resetBackground").addEventListener("click", () => {
-
-    const template = selectedTemplate();
-
-    $("background").value = DEFAULTS[template].background;
-
-    applyBackground();
-
-    $("status").textContent =
-        "The default background colour has been restored.";
-
-});
-
-
-/* =================================
-   EDITABLE HEADING AND TEXT
-================================= */
-
-const textBindings = [
-    ["heading", "previewHeading"],
-    ["subtitle", "previewSubtitle"],
-    ["decorativeText", "previewDecorative"],
-    ["footerText", "previewFooter"]
-];
-
-function decorativeTextHTML(value) {
-
-    const parts = String(value)
-        .split(/\s*,\s*/)
-        .map(part => escapeHTML(part));
-
-    if (parts.length > 1) {
-        return parts.join("<br>");
-    }
-
-    return escapeHTML(value);
-}
-
-textBindings.forEach(([inputId, previewId]) => {
-
-    const input = $(inputId);
-    const preview = $(previewId);
-
-    input.addEventListener("input", () => {
-
-        if (previewId === "previewDecorative") {
-            preview.innerHTML = decorativeTextHTML(input.value);
-        } else {
-            preview.textContent = input.value;
-        }
-
-    });
-
-    preview.addEventListener("input", () => {
-
-        const value = preview.innerText
-            .replace(/\n/g, " ")
-            .trim();
-
-        input.value = value;
-
-    });
-
-});
-
-
-/* =================================
-   BUDGET
-================================= */
-
-$("budget").addEventListener("input", () => {
-
-    updateTotals();
-
-});
-
-
-/* =================================
-   CANVAS DRAWING HELPERS
-================================= */
-
-function roundedRect(ctx, x, y, width, height, radius) {
-
-    const r = Math.min(radius, width / 2, height / 2);
-
-    ctx.beginPath();
-
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + width - r, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + r);
-
-    ctx.lineTo(x + width, y + height - r);
-    ctx.quadraticCurveTo(
-        x + width,
-        y + height,
-        x + width - r,
-        y + height
-    );
-
-    ctx.lineTo(x + r, y + height);
-    ctx.quadraticCurveTo(
-        x,
-        y + height,
-        x,
-        y + height - r
-    );
-
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-
-    ctx.closePath();
-
-}
-
-function drawText(ctx, text, x, y, options = {}) {
-
-    const {
-        font = "16px Arial",
-        color = "#222222",
-        align = "left",
-        maxWidth
-    } = options;
-
-    ctx.font = font;
-    ctx.fillStyle = color;
-    ctx.textAlign = align;
-    ctx.textBaseline = "middle";
-
-    if (maxWidth) {
-        ctx.fillText(String(text), x, y, maxWidth);
-    } else {
-        ctx.fillText(String(text), x, y);
-    }
-
-}
-
-function wrapText(ctx, text, x, y, maxWidth, lineHeight, options = {}) {
-
-    const words = String(text).split(/\s+/);
-    let line = "";
-    let currentY = y;
-
-    ctx.font = options.font || "16px Arial";
-    ctx.fillStyle = options.color || "#222222";
-    ctx.textAlign = options.align || "left";
-    ctx.textBaseline = "middle";
-
-    for (const word of words) {
-
-        const testLine = line ? `${line} ${word}` : word;
-
-        if (ctx.measureText(testLine).width > maxWidth && line) {
-
-            ctx.fillText(line, x, currentY);
-
-            currentY += lineHeight;
-            line = word;
-
-        } else {
-
-            line = testLine;
-
-        }
-
-    }
-
-    if (line) {
-        ctx.fillText(line, x, currentY);
-    }
-
-    return currentY;
-
-}
-
-
-/* =================================
-   CREATE THE SHOPPING LIST PNG
-================================= */
-
-function drawShoppingList() {
-
-    readRows();
-
-    const totals = updateTotals();
-
-    const template = selectedTemplate();
-
-    const palette = {
-        ...DEFAULTS[template],
-        background: $("background").value
-    };
-
-    const title = $("previewHeading").innerText.trim() || "Shopping List";
-    const subtitle = $("previewSubtitle").innerText.trim();
-
-    const decorative = $("previewDecorative").innerText.trim();
-    const footer = $("previewFooter").innerText.trim();
-
-    const visibleRows = rows.filter(row =>
-        row.name.trim() !== "" ||
-        row.quantity.trim() !== "" ||
-        row.price !== ""
-    );
-
-    const outputRows = visibleRows.length ? visibleRows : [];
-
-    /*
-      Portrait output gives the list a shape similar to the
-      original reference design.
-    */
-
-    const width = 1000;
-    const margin = 40;
-
-    const headerHeight = template === "market" ? 175 : 160;
-    const tableHeaderHeight = 55;
-    const rowHeight = 60;
-
-    const tableX = margin;
-    const tableY = headerHeight;
-
-    const tableWidth = width - margin * 2;
-
-    const tableRows = Math.max(outputRows.length, 1);
-
-    const tableHeight =
-        tableHeaderHeight +
-        tableRows * rowHeight +
-        65;
-
-    const showBudget = template !== "minimal";
-
-    const budgetHeight = showBudget ? 100 : 0;
-    const footerHeight = showBudget ? 75 : 15;
-
-    const height =
-        tableY +
-        tableHeight +
-        budgetHeight +
-        footerHeight +
-        25;
-
-    const scale = 2;
-
-    const canvas = document.createElement("canvas");
-
-    canvas.width = width * scale;
-    canvas.height = height * scale;
-
-    const ctx = canvas.getContext("2d");
-
-    ctx.scale(scale, scale);
-
-    ctx.fillStyle = palette.background;
-    ctx.fillRect(0, 0, width, height);
-
-    const textColor = palette.text;
-    const accentColor = palette.accent;
-    const lineColor = palette.line;
-    const headerColor = palette.head;
-
-    /* ----- TEMPLATE HEADING ----- */
-
-    if (template === "original") {
-
-        drawText(ctx, "🛒", margin + 35, 65, {
-            font: "48px Arial",
-            color: accentColor,
-            align: "center"
-        });
-
-        drawText(ctx, title, margin + 80, 55, {
-            font: "bold 43px Arial",
-            color: textColor,
-            maxWidth: 590
-        });
-
-        drawText(ctx, subtitle, margin + 80, 100, {
-            font: "bold 18px Arial",
-            color: textColor,
-            maxWidth: 590
-        });
-
-        const noteLines = decorative.split(/\n/);
-
-        drawText(ctx, noteLines[0] || "", width - margin, 48, {
-            font: "bold 23px Georgia",
-            color: accentColor,
-            align: "right"
-        });
-
-        drawText(ctx, noteLines.slice(1).join(" ") || "", width - margin, 77, {
-            font: "bold 20px Georgia",
-            color: accentColor,
-            align: "right"
-        });
-
-    } else if (template === "classic") {
-
-        drawText(ctx, title, margin, 50, {
-            font: "bold 42px Georgia",
-            color: textColor,
-            maxWidth: tableWidth
-        });
-
-        drawText(ctx, subtitle, margin, 95, {
-            font: "20px Georgia",
-            color: textColor,
-            maxWidth: tableWidth
-        });
-
-        ctx.strokeStyle = accentColor;
-        ctx.lineWidth = 3;
-
-        ctx.beginPath();
-        ctx.moveTo(margin, 130);
-        ctx.lineTo(width - margin, 130);
-        ctx.stroke();
-
-        drawText(ctx, decorative.replace(/\n/g, " "), width - margin, 147, {
-            font: "italic 16px Georgia",
-            color: accentColor,
-            align: "right"
-        });
-
-    } else if (template === "market") {
-
-        ctx.fillStyle = headerColor;
-
-        roundedRect(ctx, margin, 25, tableWidth, 130, 14);
-
-        ctx.fill();
-
-        ctx.fillStyle = accentColor;
-        ctx.fillRect(margin, 145, tableWidth, 7);
-
-        drawText(ctx, title, margin + 20, 65, {
-            font: "bold 42px Georgia",
-            color: textColor,
-            maxWidth: tableWidth - 40
-        });
-
-        drawText(ctx, subtitle, margin + 20, 103, {
-            font: "19px Arial",
-            color: textColor,
-            maxWidth: tableWidth - 40
-        });
-
-        drawText(ctx, decorative.replace(/\n/g, " "), margin + 20, 133, {
-            font: "bold 17px Georgia",
-            color: accentColor
-        });
-
-    } else {
-
-        drawText(ctx, title, margin, 55, {
-            font: "bold 42px Arial",
-            color: textColor,
-            maxWidth: tableWidth
-        });
-
-        drawText(ctx, subtitle, margin, 100, {
-            font: "20px Arial",
-            color: "#777777",
-            maxWidth: tableWidth
-        });
-
-        ctx.fillStyle = textColor;
-        ctx.fillRect(margin, 132, tableWidth, 3);
-
-    }
-
-
-    /* ----- TABLE COLUMNS ----- */
-
-    const numberX = tableX;
-    const itemX = tableX + 75;
-    const quantityX = tableX + tableWidth * 0.53;
-    const amountX = tableX + tableWidth * 0.77;
-    const endX = tableX + tableWidth;
-
-    const numberWidth = 75;
-    const itemWidth = quantityX - itemX - 10;
-    const quantityWidth = amountX - quantityX - 15;
-    const amountWidth = endX - amountX;
-
-    const headerY = tableY;
-    const bodyY = tableY + tableHeaderHeight;
-
-    /* ----- TABLE HEADER ----- */
-
-    ctx.fillStyle = headerColor;
-    ctx.fillRect(tableX, headerY, tableWidth, tableHeaderHeight);
-
-    ctx.strokeStyle = lineColor;
-    ctx.lineWidth = 1.5;
-
-    ctx.strokeRect(
-        tableX,
-        headerY,
-        tableWidth,
-        tableHeight
-    );
-
-    drawText(ctx, "#", numberX + numberWidth / 2, headerY + 28, {
-        font: "bold 20px Arial",
-        color: textColor,
-        align: "center"
-    });
-
-    drawText(ctx, "Item", itemX + 8, headerY + 28, {
-        font: "bold 20px Arial",
-        color: textColor
-    });
-
-    drawText(ctx, "Quantity", quantityX + 8, headerY + 28, {
-        font: "bold 17px Arial",
-        color: textColor
-    });
-
-    drawText(ctx, "Amount (₦)", endX - 10, headerY + 28, {
-        font: "bold 17px Arial",
-        color: textColor,
-        align: "right"
-    });
-
-    /* ----- TABLE VERTICAL LINES ----- */
-
-    const boundaries = [
-        itemX,
-        quantityX,
-        amountX
-    ];
-
-    ctx.strokeStyle = lineColor;
-
-    boundaries.forEach(x => {
-
-        ctx.beginPath();
-
-        ctx.moveTo(x, headerY);
-        ctx.lineTo(x, headerY + tableHeight);
-
-        ctx.stroke();
-
-    });
-
-    /* ----- TABLE ROWS ----- */
-
-    outputRows.forEach((row, index) => {
-
-        const y = bodyY + index * rowHeight;
-
-        if (template === "market" && index % 2 === 1) {
-
-            ctx.fillStyle = "#f8efd9";
-
-            ctx.fillRect(
-                tableX + 1,
-                y,
-                tableWidth - 2,
-                rowHeight
-            );
-
-        }
-
-        ctx.strokeStyle = lineColor;
-
-        ctx.beginPath();
-        ctx.moveTo(tableX, y + rowHeight);
-        ctx.lineTo(endX, y + rowHeight);
-        ctx.stroke();
-
-        const quantity = quantityValue(row.quantity);
-        const price = numberValue(row.price);
-        const amount = quantity * price;
-
-        drawText(ctx, String(index + 1), numberX + numberWidth / 2, y + 30, {
-            font: "bold 18px Arial",
-            color: accentColor,
-            align: "center"
-        });
-
-        wrapText(
-            ctx,
-            row.name || "",
-            itemX + 8,
-            y + 30,
-            itemWidth - 15,
-            19,
-            {
-                font: "bold 17px Arial",
-                color: textColor
-            }
-        );
-
-        drawText(
-            ctx,
-            row.quantity || "",
-            quantityX + 8,
-            y + 30,
-            {
-                font: "16px Arial",
-                color: textColor,
-                maxWidth: quantityWidth - 10
-            }
-        );
-
-        drawText(
-            ctx,
-            row.quantity.trim() !== "" && row.price !== ""
-                ? money(amount)
-                : "—",
-            endX - 10,
-            y + 30,
-            {
-                font: "bold 17px Arial",
-                color: textColor,
-                align: "right",
-                maxWidth: amountWidth - 10
-            }
-        );
-
-    });
-
-    /* ----- EMPTY LIST MESSAGE ----- */
-
-    if (outputRows.length === 0) {
-
-        drawText(
-            ctx,
-            "Your shopping list",
-            width / 2,
-            bodyY + 30,
-            {
-                font: "17px Arial",
-                color: textColor,
-                align: "center"
-            }
-        );
-
-    }
-
-
-    /* ----- TOTAL ----- */
-
-    const totalY = bodyY + tableRows * rowHeight;
-
-    ctx.fillStyle = palette.background;
-
-    ctx.fillRect(
-        tableX + 1,
-        totalY,
-        tableWidth - 2,
-        65
-    );
-
-    ctx.strokeStyle = lineColor;
-
-    ctx.beginPath();
-    ctx.moveTo(tableX, totalY);
-    ctx.lineTo(endX, totalY);
-    ctx.stroke();
-
-    drawText(ctx, "TOTAL", amountX - 18, totalY + 31, {
-        font: "bold 24px Arial",
-        color: textColor,
-        align: "right"
-    });
-
-    drawText(ctx, money(totals.total), endX - 10, totalY + 31, {
-        font: "bold 24px Arial",
-        color: accentColor,
-        align: "right",
-        maxWidth: amountWidth - 10
-    });
-
-
-    /* ----- BUDGET PANEL ----- */
-
-    if (showBudget) {
-
-        const budgetY = tableY + tableHeight + 18;
-
-        ctx.strokeStyle = accentColor;
-        ctx.lineWidth = 3;
-
-        roundedRect(
-            ctx,
-            margin,
-            budgetY,
-            tableWidth,
-            82,
-            template === "market" ? 28 : 14
-        );
-
-        ctx.stroke();
-
-        drawText(ctx, "▣", margin + 42, budgetY + 41, {
-            font: "bold 37px Arial",
-            color: accentColor,
-            align: "center"
-        });
-
-        ctx.beginPath();
-        ctx.moveTo(margin + 90, budgetY + 12);
-        ctx.lineTo(margin + 90, budgetY + 70);
-        ctx.stroke();
-
-        drawText(ctx, "Total Budget:", margin + 115, budgetY + 27, {
-            font: "bold 19px Arial",
-            color: textColor
-        });
-
-        drawText(ctx, "Remaining:", margin + 115, budgetY + 56, {
-            font: "bold 19px Arial",
-            color: textColor
-        });
-
-        const budgetValue = totals.hasBudget
-            ? money(totals.budget)
-            : "—";
-
-        const remainingValue = totals.hasBudget
-            ? money(totals.remaining)
-            : "—";
-
-        drawText(ctx, budgetValue, margin + 320, budgetY + 27, {
-            font: "bold 19px Arial",
-            color: accentColor
-        });
-
-        drawText(ctx, remainingValue, margin + 320, budgetY + 56, {
-            font: "bold 19px Arial",
-            color: totals.remaining < 0 ? "#ff8277" : accentColor
-        });
-
-    }
-
-
-    /* ----- FOOTER ----- */
-
-    if (showBudget) {
-
-        const footerY = tableY + tableHeight + budgetHeight + 18;
-
-        drawText(
-            ctx,
-            footer,
-            width / 2,
-            footerY,
-            {
-                font: "bold 25px Georgia",
-                color: accentColor,
-                align: "center",
-                maxWidth: tableWidth
-            }
-        );
-
-    }
-
-    return canvas;
-}
-
-
-/* =================================
-   DOWNLOAD PNG
-================================= */
-
-$("downloadBtn").addEventListener("click", async () => {
-
-    const button = $("downloadBtn");
-
-    button.disabled = true;
-    button.textContent = "Preparing image...";
-
-    $("status").textContent = "";
+    let formatted;
 
     try {
-
-        const canvas = drawShoppingList();
-
-        const blob = await new Promise((resolve, reject) => {
-
-            canvas.toBlob(result => {
-
-                if (result) {
-                    resolve(result);
-                } else {
-                    reject(new Error("Could not create PNG."));
-                }
-
-            }, "image/png");
-
-        });
-
-        const url = URL.createObjectURL(blob);
-
-        const title = $("heading").value.trim() || "Shopping List";
-
-        const filename = title
-            .replace(/[<>:"/\\|?*\x00-\x1F]/g, "")
-            .replace(/\s+/g, "-")
-            .toLowerCase();
-
-        const link = document.createElement("a");
-
-        link.href = url;
-        link.download = `${filename || "shopping-list"}.png`;
-
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-
-        setTimeout(() => URL.revokeObjectURL(url), 2000);
-
-        $("status").textContent =
-            "Your shopping list PNG is ready.";
-
-    } catch (error) {
-
-        console.error("PNG export error:", error);
-
-        $("status").textContent =
-            "The image could not be downloaded. Please try again in Chrome.";
-
-    } finally {
-
-        button.disabled = false;
-        button.textContent = "↓ Download PNG";
-
+      formatted = new Intl.NumberFormat("en", {
+        style: "currency",
+        currency: list.currency || "NGN"
+      }).format(total);
+    } catch {
+      formatted = `${list.currency || "NGN"} ${total.toFixed(2)}`;
     }
 
+    return `
+      <article class="saved-card">
+        <h3>${escapeHtml(list.title || "Shopping List")}</h3>
+        <p>${count} item${count === 1 ? "" : "s"} · ${escapeHtml(formatted)}</p>
+        <div class="saved-card-actions">
+          <button class="load-saved" type="button" data-load="${escapeHtml(list.id)}">Open list</button>
+          <button class="delete-saved" type="button" data-delete="${escapeHtml(list.id)}">Delete</button>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function showStatus(message, isError = false) {
+  const status = $("statusMessage");
+  status.textContent = message;
+  status.classList.toggle("error", isError);
+}
+
+function resetList() {
+  $("listTitle").value = "Shopping List";
+  $("currency").value = "NGN";
+  $("budget").value = "";
+  $("subtitle").value = "";
+
+  activeTemplate = "cream";
+  accentColor = templates.cream.accent;
+  activeSavedId = null;
+  items = [];
+
+  $("showQuantities").checked = true;
+  $("showPrices").checked = true;
+
+  document.querySelectorAll(".template-option").forEach(button => {
+    button.classList.toggle("active", button.dataset.template === "cream");
+  });
+
+  document.querySelectorAll(".color-dot").forEach(button => {
+    button.classList.toggle("selected", button.dataset.color === accentColor);
+  });
+
+  renderItems();
+  renderPreview();
+  showStatus("Started a fresh list.");
+}
+
+$("addItemBtn").addEventListener("click", () => addItem());
+$("newListBtn").addEventListener("click", resetList);
+
+$("clearBtn").addEventListener("click", () => {
+  items = [];
+  renderItems();
+  renderPreview();
+  showStatus("Items cleared.");
 });
 
+$("saveBtn").addEventListener("click", () => {
+  const data = currentList();
 
-/* =================================
-   INITIALISE THE WEBSITE
-================================= */
+  if (!data.items.some(item => item.name.trim())) {
+    showStatus("Add at least one named item before saving.", true);
+    return;
+  }
 
-// Start with Template 1 and its original background.
-$("template").value = "original";
+  const existingIndex = savedLists.findIndex(list => list.id === data.id);
 
-$("background").value = DEFAULTS.original.background;
+  if (existingIndex >= 0) {
+    savedLists[existingIndex] = data;
+  } else {
+    savedLists.unshift(data);
+  }
 
-applyTemplate("original", false);
+  savedLists = savedLists.slice(0, 50);
 
-// The template starts blank: no example items or prices.
-rows = [];
+  if (persistSavedLists()) {
+    activeSavedId = data.id;
+    renderSavedLists();
+    showStatus("List saved in this browser.");
+  }
+});
 
-renderRows();
+$("itemsList").addEventListener("input", event => {
+  if (!event.target.matches("input")) return;
+
+  readItemsFromInputs();
+  renderPreview();
+});
+
+$("itemsList").addEventListener("click", event => {
+  const button = event.target.closest(".remove-item");
+  if (!button) return;
+
+  const row = button.closest(".item-row");
+  const id = row.dataset.id;
+
+  items = items.filter(item => item.id !== id);
+  renderItems();
+  renderPreview();
+});
+
+["listTitle", "currency", "budget", "subtitle", "showQuantities", "showPrices"]
+  .forEach(id => {
+    $(id).addEventListener("input", renderPreview);
+    $(id).addEventListener("change", renderPreview);
+  });
+
+$("templates").addEventListener("click", event => {
+  const button = event.target.closest("[data-template]");
+  if (!button) return;
+
+  activeTemplate = button.dataset.template;
+  accentColor = templates[activeTemplate].accent;
+
+  document.querySelectorAll(".template-option").forEach(option => {
+    option.classList.toggle("active", option === button);
+  });
+
+  document.querySelectorAll(".color-dot").forEach(dot => {
+    dot.classList.toggle("selected", dot.dataset.color === accentColor);
+  });
+
+  renderPreview();
+});
+
+document.querySelectorAll(".color-dot").forEach(button => {
+  button.addEventListener("click", () => {
+    accentColor = button.dataset.color;
+
+    document.querySelectorAll(".color-dot").forEach(dot => {
+      dot.classList.toggle("selected", dot === button);
+    });
+
+    renderPreview();
+  });
+});
+
+$("savedLists").addEventListener("click", event => {
+  const loadButton = event.target.closest("[data-load]");
+  const deleteButton = event.target.closest("[data-delete]");
+
+  if (loadButton) {
+    const list = savedLists.find(entry => entry.id === loadButton.dataset.load);
+
+    if (list) {
+      loadList(list);
+      $("builder").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  if (deleteButton) {
+    const id = deleteButton.dataset.delete;
+
+    savedLists = savedLists.filter(entry => entry.id !== id);
+
+    if (persistSavedLists()) {
+      if (activeSavedId === id) activeSavedId = null;
+      renderSavedLists();
+      showStatus("Saved list deleted.");
+    }
+  }
+});
+
+$("downloadBtn").addEventListener("click", async () => {
+  renderPreview();
+
+  const node = $("listPreview");
+  const downloadButton = $("downloadBtn");
+
+  downloadButton.disabled = true;
+  downloadButton.textContent = "Preparing image…";
+
+  try {
+    const width = Math.ceil(node.getBoundingClientRect().width);
+    const height = Math.ceil(node.getBoundingClientRect().height);
+
+    if (!width || !height) {
+      throw new Error("The preview has no size.");
+    }
+
+    const clone = node.cloneNode(true);
+    clone.style.width = `${width}px`;
+    clone.style.height = "auto";
+    clone.style.fontFamily = "Arial, sans-serif";
+
+    const html = new XMLSerializer().serializeToString(clone);
+
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+        <foreignObject width="100%" height="100%">
+          <div xmlns="http://www.w3.org/1999/xhtml"
+               style="width:${width}px;min-height:${height}px;font-family:Arial,sans-serif">
+            ${html}
+          </div>
+        </foreignObject>
+      </svg>
+    `;
+
+    const svgBlob = new Blob([svg], {
+      type: "image/svg+xml;charset=utf-8"
+    });
+
+    const svgUrl = URL.createObjectURL(svgBlob);
+    const image = new Image();
+
+    image.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = width * 2;
+        canvas.height = height * 2;
+
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("Canvas unavailable.");
+
+        context.scale(2, 2);
+        context.drawImage(image, 0, 0, width, height);
+
+        canvas.toBlob(png => {
+          URL.revokeObjectURL(svgUrl);
+
+          if (!png) {
+            showStatus("Image export failed in this browser.", true);
+            return;
+          }
+
+          const pngUrl = URL.createObjectURL(png);
+          const link = document.createElement("a");
+
+          link.href = pngUrl;
+          link.download =
+            `${($("listTitle").value.trim() || "shopping-list")
+              .replace(/[^a-z0-9-_]+/gi, "-")
+              .toLowerCase()}.png`;
+
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+
+          setTimeout(() => URL.revokeObjectURL(pngUrl), 1500);
+          showStatus("Your PNG download is ready.");
+        }, "image/png");
+      } catch (error) {
+        URL.revokeObjectURL(svgUrl);
+        console.error(error);
+        showStatus("Could not export the image in this browser.", true);
+      }
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(svgUrl);
+      showStatus(
+        "This browser couldn't export the image. Try opening the website in another browser.",
+        true
+      );
+    };
+
+    image.src = svgUrl;
+  } catch (error) {
+    console.error(error);
+    showStatus("Could not export the image. Please try again.", true);
+  } finally {
+    downloadButton.disabled = false;
+    downloadButton.textContent = "↓ Download list as image";
+  }
+});
+
+// Start with a blank, reusable shopping list.
+$("listTitle").value = "Shopping List";
+$("subtitle").value = "";
+$("budget").value = "";
+$("currency").value = "NGN";
+items = [];
+
+// Restore saved lists from this browser.
+savedLists = readSavedLists();
+
+renderItems();
+renderPreview();
+renderSavedLists();
