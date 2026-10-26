@@ -1,0 +1,914 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Caveat:wght@600;700&display=swap');
+
+
+/* =========================
+   GENERAL WEBSITE
+========================= */
+
+:root {
+    --green: #10e6a3;
+    --ink: #252b2a;
+    --muted: #777d78;
+    --border: #e5e5df;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #f5f4ef;
+    color: var(--ink);
+    font-family: "DM Sans", Arial, sans-serif;
+}
+
+button,
+input,
+select {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+.topbar {
+    min-height: 65px;
+    padding: 12px 5%;
+    background: white;
+    border-bottom: 1px solid var(--border);
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.brand {
+    color: #172c2b;
+    text-decoration: none;
+    font-size: 25px;
+    font-weight: 800;
+    letter-spacing: -1.5px;
+}
+
+.brand span {
+    color: #10a779;
+}
+
+.download-btn,
+.primary-btn {
+    border: none;
+    border-radius: 8px;
+    background: #173b31;
+    color: white;
+    font-weight: 700;
+    padding: 12px 17px;
+}
+
+.download-btn:hover,
+.primary-btn:hover {
+    background: #225748;
+}
+
+.download-btn:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+.app {
+    width: min(1050px, 94%);
+    margin: 28px auto;
+}
+
+.settings {
+    padding: 20px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 24px;
+}
+
+label {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+input,
+select {
+    width: 100%;
+    min-width: 0;
+    padding: 11px;
+    border: 1px solid #dcded8;
+    border-radius: 7px;
+    background: white;
+    color: #252b2a;
+}
+
+input:focus,
+select:focus {
+    outline: 2px solid #b6e9d4;
+    border-color: #4b9a7b;
+}
+
+#template {
+    margin-top: 7px;
+}
+
+.customise {
+    margin-top: 17px;
+    padding-top: 15px;
+    border-top: 1px solid #efeee9;
+}
+
+.customise summary {
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.customise-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 15px;
+    margin-top: 16px;
+}
+
+.colour-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.colour-controls input[type="color"] {
+    width: 54px;
+    height: 42px;
+    padding: 3px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.reset-colour {
+    border: 1px solid #dcded8;
+    background: #fff;
+    border-radius: 7px;
+    padding: 10px 12px;
+    color: #343a35;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.reset-colour:hover {
+    background: #f3f2ec;
+}
+
+.small-note {
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.budget-settings {
+    margin-top: 18px;
+    padding-top: 17px;
+    border-top: 1px solid #efeee9;
+}
+
+.budget-settings > input {
+    margin-top: 7px;
+}
+
+.budget-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 30px;
+    margin-top: 13px;
+}
+
+.budget-summary div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.budget-summary span {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.budget-summary strong {
+    font-size: 15px;
+    color: #247756;
+}
+
+
+/* =========================
+   COMMON SHOPPING LIST
+========================= */
+
+.paper {
+    --paper-bg: #07151b;
+    --paper-text: #f3f6ff;
+    --paper-accent: #10e6a3;
+    --paper-line: #245c7b;
+    --paper-head: #102632;
+
+    width: 100%;
+    padding: clamp(15px, 3.5vw, 36px);
+    background: var(--paper-bg);
+    color: var(--paper-text);
+    overflow: hidden;
+    border-radius: 3px;
+    box-shadow: 0 10px 30px #0000000a;
+}
+
+.list-heading {
+    display: grid;
+    grid-template-columns: 65px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 13px;
+    margin-bottom: 25px;
+}
+
+.cart-icon {
+    color: var(--paper-accent);
+}
+
+.cart-icon svg {
+    display: block;
+    width: 100%;
+    max-width: 65px;
+}
+
+.heading-text {
+    min-width: 0;
+}
+
+.heading-text h1 {
+    font-size: clamp(25px, 4.5vw, 46px);
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    line-height: 1.08;
+    overflow-wrap: anywhere;
+    margin: 0 0 7px;
+}
+
+.heading-text p {
+    font-size: clamp(11px, 1.7vw, 18px);
+    font-weight: 700;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.heading-note {
+    color: var(--paper-accent);
+    font-family: "Caveat", cursive;
+    font-size: clamp(15px, 2.4vw, 24px);
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.05;
+    transform: rotate(-5deg);
+    max-width: 105px;
+    overflow-wrap: anywhere;
+}
+
+[contenteditable="true"] {
+    outline: none;
+    cursor: text;
+}
+
+[contenteditable="true"]:focus {
+    outline: 1px dashed var(--paper-accent);
+    outline-offset: 4px;
+}
+
+.table-wrap {
+    width: 100%;
+}
+
+.shopping-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid var(--paper-line);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.shopping-table th,
+.shopping-table td {
+    padding: 11px 8px;
+    border-right: 1px solid var(--paper-line);
+    border-bottom: 1px solid var(--paper-line);
+    vertical-align: middle;
+}
+
+.shopping-table th:last-child,
+.shopping-table td:last-child {
+    border-right: 0;
+}
+
+.shopping-table tfoot td {
+    border-bottom: 0;
+}
+
+.shopping-table th {
+    background: var(--paper-head);
+    text-align: center;
+    font-size: clamp(10px, 1.7vw, 17px);
+    font-weight: 800;
+}
+
+.number-col {
+    width: 7%;
+}
+
+.item-col {
+    width: 30%;
+}
+
+.quantity-col {
+    width: 21%;
+}
+
+.amount-col {
+    width: 27%;
+}
+
+.action-col {
+    width: 9%;
+}
+
+.shopping-table tbody td {
+    font-size: clamp(11px, 1.55vw, 17px);
+}
+
+.row-number {
+    text-align: center;
+    font-weight: 800;
+}
+
+.cell-input {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    padding: 3px;
+    border: none;
+    border-radius: 0;
+    outline: none;
+    background: transparent;
+    color: inherit;
+    font-size: inherit;
+    font-weight: 600;
+}
+
+.cell-input:focus {
+    outline: 1px dashed var(--paper-accent);
+}
+
+.cell-input::placeholder {
+    color: currentColor;
+    opacity: 0.45;
+}
+
+.quantity-input {
+    text-align: center;
+}
+
+.price-input {
+    text-align: right;
+}
+
+.line-amount {
+    text-align: right;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.remove-row {
+    width: 100%;
+    padding: 3px;
+    border: none;
+    background: transparent;
+    color: #e78b83;
+    font-size: 18px;
+}
+
+.total-label {
+    text-align: right;
+    font-size: clamp(13px, 2.2vw, 23px);
+    font-weight: 800;
+}
+
+.total-value {
+    color: var(--paper-accent);
+    text-align: right;
+    font-size: clamp(13px, 2.2vw, 23px);
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.budget-panel {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-top: 18px;
+    padding: 13px 20px;
+    border: 2px solid var(--paper-accent);
+    border-radius: 15px;
+}
+
+.wallet-icon {
+    width: 78px;
+    flex-shrink: 0;
+    padding-right: 20px;
+    border-right: 2px solid var(--paper-accent);
+    color: var(--paper-accent);
+}
+
+.wallet-icon svg {
+    display: block;
+    width: 100%;
+}
+
+.budget-details {
+    flex: 1;
+    display: grid;
+    gap: 8px;
+}
+
+.budget-details div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    font-size: clamp(12px, 1.9vw, 20px);
+    font-weight: 700;
+}
+
+.budget-details strong {
+    color: var(--paper-accent);
+    overflow-wrap: anywhere;
+}
+
+.list-footer {
+    margin-top: 17px;
+    color: var(--paper-accent);
+    text-align: center;
+    font-family: "Caveat", cursive;
+    font-size: clamp(17px, 2.7vw, 27px);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.list-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.secondary-btn {
+    padding: 11px 16px;
+    border: 1px solid #deded8;
+    border-radius: 8px;
+    background: white;
+    color: #252b2a;
+    font-weight: 600;
+}
+
+.hint,
+#status {
+    color: #777d78;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+#status {
+    color: #247756;
+}
+
+
+/* =========================
+   TEMPLATE 1
+   ORIGINAL NEON TABLE
+========================= */
+
+.paper.original {
+    --paper-bg: #07151b;
+    --paper-text: #f3f6ff;
+    --paper-accent: #10e6a3;
+    --paper-line: #245c7b;
+    --paper-head: #102632;
+}
+
+.paper.original .heading-text h1 {
+    letter-spacing: -1.7px;
+}
+
+.paper.original .budget-panel {
+    border-radius: 15px;
+}
+
+
+/* =========================
+   TEMPLATE 2
+   FRESH & SIMPLE
+========================= */
+
+.paper.classic {
+    --paper-bg: #fffaf0;
+    --paper-text: #343a30;
+    --paper-accent: #648057;
+    --paper-line: #ded8c8;
+    --paper-head: #eee8d9;
+
+    border: 1px solid #ded8c8;
+    border-radius: 14px;
+    box-shadow: none;
+}
+
+.paper.classic .list-heading {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-bottom: 18px;
+    border-bottom: 2px solid var(--paper-accent);
+}
+
+.paper.classic .cart-icon {
+    display: none;
+}
+
+.paper.classic .heading-text h1 {
+    font-family: Georgia, serif;
+    font-weight: 700;
+    letter-spacing: -1px;
+}
+
+.paper.classic .heading-text p {
+    font-family: Georgia, serif;
+    font-weight: 400;
+}
+
+.paper.classic .heading-note {
+    font-family: "Caveat", cursive;
+    transform: none;
+}
+
+.paper.classic .shopping-table {
+    border: none;
+    border-radius: 0;
+}
+
+.paper.classic .shopping-table th {
+    text-align: left;
+    background: transparent;
+    border-top: 0;
+}
+
+.paper.classic .shopping-table th,
+.paper.classic .shopping-table td {
+    border-right: 0;
+    border-left: 0;
+}
+
+.paper.classic .number-col {
+    width: 8%;
+}
+
+.paper.classic .item-col {
+    width: 31%;
+}
+
+.paper.classic .quantity-col {
+    width: 24%;
+}
+
+.paper.classic .amount-col {
+    width: 27%;
+}
+
+.paper.classic .action-col {
+    width: 10%;
+}
+
+.paper.classic .row-number {
+    color: var(--paper-accent);
+}
+
+.paper.classic .budget-panel {
+    border-radius: 6px;
+}
+
+.paper.classic .list-footer {
+    font-family: Georgia, serif;
+    font-style: italic;
+}
+
+
+/* =========================
+   TEMPLATE 3
+   MARKET DAY
+========================= */
+
+.paper.market {
+    --paper-bg: #fff7e8;
+    --paper-text: #3c3024;
+    --paper-accent: #c34e2d;
+    --paper-line: #e4c99e;
+    --paper-head: #f2dfb9;
+
+    border: 3px solid #c34e2d;
+    border-radius: 20px;
+    padding: clamp(14px, 3vw, 30px);
+}
+
+.paper.market .list-heading {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    margin: -4px -4px 22px;
+    padding: 20px;
+    background: #f2dfb9;
+    border-radius: 13px;
+    border-bottom: 5px solid #c34e2d;
+}
+
+.paper.market .cart-icon {
+    display: none;
+}
+
+.paper.market .heading-text h1 {
+    font-family: Georgia, serif;
+    font-size: clamp(30px, 5vw, 48px);
+    letter-spacing: -1px;
+}
+
+.paper.market .heading-text p {
+    font-weight: 600;
+}
+
+.paper.market .heading-note {
+    max-width: none;
+    text-align: left;
+    transform: none;
+    font-family: "Caveat", cursive;
+    font-size: clamp(19px, 2.6vw, 27px);
+}
+
+.paper.market .shopping-table {
+    border: 2px solid var(--paper-line);
+    border-radius: 12px;
+}
+
+.paper.market .shopping-table th {
+    background: #f2dfb9;
+    color: #573d29;
+}
+
+.paper.market .shopping-table tbody tr:nth-child(even) {
+    background: #f8efd9;
+}
+
+.paper.market .shopping-table th,
+.paper.market .shopping-table td {
+    border-color: var(--paper-line);
+}
+
+.paper.market .row-number {
+    color: #c34e2d;
+}
+
+.paper.market .total-value {
+    color: #c34e2d;
+}
+
+.paper.market .budget-panel {
+    border-radius: 28px;
+    background: #fff0d4;
+}
+
+.paper.market .list-footer {
+    color: #c34e2d;
+    font-size: clamp(19px, 3vw, 29px);
+}
+
+
+/* =========================
+   TEMPLATE 4
+   MINIMALIST
+========================= */
+
+.paper.minimal {
+    --paper-bg: #ffffff;
+    --paper-text: #252525;
+    --paper-accent: #252525;
+    --paper-line: #dddddd;
+    --paper-head: #f4f4f4;
+
+    border: 1px solid #ddd;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.paper.minimal .list-heading {
+    grid-template-columns: minmax(0, 1fr);
+    padding-bottom: 22px;
+    border-bottom: 3px solid #252525;
+}
+
+.paper.minimal .cart-icon,
+.paper.minimal .heading-note,
+.paper.minimal .budget-panel,
+.paper.minimal .list-footer {
+    display: none;
+}
+
+.paper.minimal .heading-text h1 {
+    font-size: clamp(28px, 4vw, 40px);
+    letter-spacing: -1px;
+}
+
+.paper.minimal .heading-text p {
+    font-weight: 400;
+    color: #666;
+}
+
+.paper.minimal .shopping-table {
+    border: none;
+    border-radius: 0;
+}
+
+.paper.minimal .shopping-table th {
+    text-align: left;
+    background: #f4f4f4;
+}
+
+.paper.minimal .shopping-table th,
+.paper.minimal .shopping-table td {
+    border-right: 0;
+    border-left: 0;
+}
+
+.paper.minimal .shopping-table th:first-child,
+.paper.minimal .shopping-table td:first-child {
+    text-align: left;
+}
+
+.paper.minimal .total-value {
+    color: #252525;
+}
+
+.paper.minimal .total-label {
+    letter-spacing: 1px;
+}
+
+
+/* =========================
+   RESPONSIVE DESIGN
+========================= */
+
+@media (max-width: 600px) {
+
+    .topbar {
+        padding: 12px 4%;
+    }
+
+    .brand {
+        font-size: 22px;
+    }
+
+    .download-btn {
+        padding: 10px;
+        font-size: 12px;
+    }
+
+    .app {
+        width: 96%;
+        margin: 16px auto;
+    }
+
+    .settings {
+        padding: 14px;
+    }
+
+    .customise-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .budget-summary {
+        gap: 22px;
+    }
+
+    .paper {
+        padding: 12px 8px;
+    }
+
+    .list-heading {
+        grid-template-columns: 38px minmax(0, 1fr) auto;
+        gap: 7px;
+    }
+
+    .heading-note {
+        max-width: 58px;
+        font-size: 14px;
+    }
+
+    .cart-icon svg {
+        width: 38px;
+    }
+
+    .shopping-table th,
+    .shopping-table td {
+        padding: 8px 3px;
+    }
+
+    .shopping-table th {
+        font-size: 9px;
+        overflow-wrap: anywhere;
+    }
+
+    .shopping-table tbody td {
+        font-size: 11px;
+    }
+
+    .number-col {
+        width: 7%;
+    }
+
+    .item-col {
+        width: 28%;
+    }
+
+    .quantity-col {
+        width: 22%;
+    }
+
+    .amount-col {
+        width: 30%;
+    }
+
+    .action-col {
+        width: 9%;
+    }
+
+    .cell-input {
+        padding: 2px 1px;
+        font-size: 10px;
+    }
+
+    .remove-row {
+        font-size: 15px;
+    }
+
+    .budget-panel {
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .wallet-icon {
+        width: 50px;
+        padding-right: 10px;
+    }
+
+    .budget-details div {
+        font-size: 11px;
+        gap: 6px;
+    }
+
+    .list-actions button {
+        flex: 1;
+        padding: 11px 5px;
+        font-size: 12px;
+    }
+
+    .paper.market .list-heading {
+        padding: 13px;
+    }
+}
+
+@media print {
+
+    body {
+        background: white;
+    }
+
+    .topbar,
+    .settings,
+    .list-actions,
+    .hint,
+    #status {
+        display: none !important;
+    }
+
+    .app {
+        width: 100%;
+        margin: 0;
+    }
+
+    .paper {
+        box-shadow: none;
+    }
+}

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Listly — Shopping List Maker</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header class="topbar">
+        <a href="#" class="brand">listly<span>.</span></a>
+
+        <button id="downloadBtn" class="download-btn">
+            ↓ Download PNG
+        </button>
+    </header>
+
+    <main class="app">
+
+        <section class="settings">
+
+            <div class="setting-group">
+                <label for="template">Choose your template</label>
+
+                <select id="template">
+                    <option value="original">1. Neon Table — Original</option>
+                    <option value="classic">2. Fresh & Simple</option>
+                    <option value="market">3. Market Day</option>
+                    <option value="minimal">4. Minimalist</option>
+                </select>
+            </div>
+
+            <details class="customise">
+                <summary>Customise your list</summary>
+
+                <div class="customise-grid">
+
+                    <label>
+                        Heading
+                        <input
+                            id="heading"
+                            type="text"
+                            value="Shopping List"
+                            maxlength="60"
+                        >
+                    </label>
+
+                    <label>
+                        Subtitle
+                        <input
+                            id="subtitle"
+                            type="text"
+                            value="Household Groceries & Essentials"
+                            maxlength="100"
+                        >
+                    </label>
+
+                    <label>
+                        Decorative text
+                        <input
+                            id="decorativeText"
+                            type="text"
+                            value="Good Food, Better Days"
+                            maxlength="60"
+                        >
+                    </label>
+
+                    <label>
+                        Footer message
+                        <input
+                            id="footerText"
+                            type="text"
+                            value="Small budget, big meals"
+                            maxlength="80"
+                        >
+                    </label>
+
+                    <label>
+                        Background colour
+                        <div class="colour-controls">
+                            <input
+                                id="background"
+                                type="color"
+                                value="#07151b"
+                                aria-label="Choose background colour"
+                            >
+
+                            <button
+                                id="resetBackground"
+                                type="button"
+                                class="reset-colour"
+                            >
+                                Reset colour
+                            </button>
+                        </div>
+                    </label>
+
+                </div>
+
+                <p class="small-note">
+                    Choose a colour visually. Reset colour restores the
+                    default background of the selected template.
+                </p>
+            </details>
+
+            <div class="budget-settings">
+                <label for="budget">Shopping budget (optional)</label>
+
+                <input
+                    id="budget"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Enter your budget"
+                >
+
+                <div class="budget-summary">
+                    <div>
+                        <span>Total cost</span>
+                        <strong id="totalOutside">₦0.00</strong>
+                    </div>
+
+                    <div>
+                        <span>Remaining</span>
+                        <strong id="remainingOutside">—</strong>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+
+        <!-- SHOPPING LIST TEMPLATE -->
+
+        <section class="workspace">
+
+            <div id="paper" class="paper original">
+
+                <header class="list-heading">
+
+                    <div class="cart-icon" aria-hidden="true">
+                        <svg viewBox="0 0 80 70" fill="none">
+                            <path
+                                d="M5 8 L15 8 L25 45 L63 45 L74 17 L20 17"
+                                stroke="currentColor"
+                                stroke-width="5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+
+                            <circle cx="31" cy="58" r="5" fill="currentColor"/>
+                            <circle cx="59" cy="58" r="5" fill="currentColor"/>
+
+                            <path
+                                d="M5 22 L12 22 M3 32 L10 32 M8 42 L14 38"
+                                stroke="currentColor"
+                                stroke-width="4"
+                                stroke-linecap="round"
+                            />
+                        </svg>
+                    </div>
+
+                    <div class="heading-text">
+
+                        <h1 id="previewHeading" contenteditable="true">
+                            Shopping List
+                        </h1>
+
+                        <p id="previewSubtitle" contenteditable="true">
+                            Household Groceries & Essentials
+                        </p>
+
+                    </div>
+
+                    <div
+                        id="previewDecorative"
+                        class="heading-note"
+                        contenteditable="true"
+                    >
+                        Good Food<br>Better Days ♡
+                    </div>
+
+                </header>
+
+
+                <div class="table-wrap">
+
+                    <table class="shopping-table">
+
+                        <thead>
+                            <tr>
+                                <th class="number-col">#</th>
+                                <th class="item-col">Item</th>
+                                <th class="quantity-col">Quantity</th>
+                                <th class="amount-col">Amount (₦)</th>
+                                <th class="action-col" aria-label="Actions"></th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="items"></tbody>
+
+                        <tfoot>
+                            <tr>
+                                <td colspan="3" class="total-label">
+                                    TOTAL
+                                </td>
+
+                                <td id="totalInside" class="total-value">
+                                    ₦0.00
+                                </td>
+
+                                <td class="action-col"></td>
+                            </tr>
+                        </tfoot>
+
+                    </table>
+
+                </div>
+
+
+                <section class="budget-panel" id="budgetPanel">
+
+                    <div class="wallet-icon" aria-hidden="true">
+                        <svg viewBox="0 0 70 65" fill="none">
+                            <path
+                                d="M9 20 L48 9 L51 22"
+                                stroke="currentColor"
+                                stroke-width="4"
+                                stroke-linejoin="round"
+                            />
+
+                            <path
+                                d="M8 20 L8 53 Q8 57 13 57 L59 57 Q63 57 63 53 L63 27 Q63 23 59 23 L13 23 Q8 23 8 20"
+                                stroke="currentColor"
+                                stroke-width="4"
+                                stroke-linejoin="round"
+                            />
+
+                            <path
+                                d="M48 34 L66 34 L66 46 L48 46 Q42 46 42 40 Q42 34 48 34"
+                                stroke="currentColor"
+                                stroke-width="4"
+                            />
+
+                            <circle cx="51" cy="40" r="2" fill="currentColor"/>
+                        </svg>
+                    </div>
+
+                    <div class="budget-details">
+
+                        <div>
+                            <span>Total Budget:</span>
+                            <strong id="budgetInside">—</strong>
+                        </div>
+
+                        <div>
+                            <span>Remaining:</span>
+                            <strong id="remainingInside">—</strong>
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+                <footer
+                    id="previewFooter"
+                    class="list-footer"
+                    contenteditable="true"
+                >
+                    Small budget, big meals
+                </footer>
+
+            </div>
+
+
+            <div class="list-actions">
+
+                <button id="addRow" class="primary-btn">
+                    + Add item
+                </button>
+
+                <button id="clearRows" class="secondary-btn">
+                    Clear items
+                </button>
+
+            </div>
+
+            <p class="hint">
+                Click directly inside the list to edit its text. Enter
+                quantities and unit prices in the rows. Amounts and totals
+                are calculated automatically.
+            </p>
+
+            <p id="status" role="status" aria-live="polite"></p>
+
+        </section>
+
+    </main>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
