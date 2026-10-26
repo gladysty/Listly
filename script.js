@@ -1,627 +1,656 @@
 "use strict";
 
 const $ = id => document.getElementById(id);
+const paper = $("paper");
+const itemsBody = $("items");
 
+let rows = [];
+let nextId = 1;
+let currentSavedId = "";
 const STORAGE_KEY = "listly_saved_lists_v1";
 
-const templates = {
-  cream: {
-    background: "#fff9eb",
-    color: "#30382b",
-    accent: "#66845c"
-  },
-  green: {
-    background: "#294b3c",
-    color: "#f8f2df",
-    accent: "#e3c878"
-  },
-  pink: {
-    background: "#f8e3e7",
-    color: "#533b43",
-    accent: "#b35f78"
-  },
-  dark: {
-    background: "#101b20",
-    color: "#f0f5f4",
-    accent: "#40e2ae"
-  }
+const CURRENCIES = {
+    NGN: { locale: "en-NG", symbol: "₦" },
+    USD: { locale: "en-US", symbol: "$" },
+    GBP: { locale: "en-GB", symbol: "£" },
+    EUR: { locale: "de-DE", symbol: "€" },
+    GHS: { locale: "en-GH", symbol: "GH₵" },
+    KES: { locale: "en-KE", symbol: "KSh" },
+    ZAR: { locale: "en-ZA", symbol: "R" },
+    CAD: { locale: "en-CA", symbol: "C$" },
+    INR: { locale: "en-IN", symbol: "₹" }
 };
 
-const currencies = {
-  NGN: "₦",
-  USD: "$",
-  GBP: "£",
-  EUR: "€",
-  GHS: "GH₵",
-  KES: "KSh",
-  ZAR: "R",
-  CAD: "CA$",
-  INR: "₹"
+const DEFAULTS = {
+    original: { background: "#07151b" },
+    classic: { background: "#fffaf0" },
+    market: { background: "#fff7e8" },
+    minimal: { background: "#ffffff" }
 };
-
-let items = [];
-let savedLists = [];
-let activeTemplate = "cream";
-let accentColor = "#66845c";
-let nextId = 1;
-let activeSavedId = null;
-
-function makeId() {
-  return (window.crypto && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, character => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  })[character]);
-}
-
-function getCurrency() {
-  return $("currency").value || "NGN";
-}
 
 function money(value) {
-  const amount = Number(value) || 0;
-  const currency = getCurrency();
-
-  try {
-    return new Intl.NumberFormat("en", {
-      style: "currency",
-      currency,
-      currencyDisplay: "symbol",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount);
-  } catch {
-    return `${currencies[currency] || currency}${amount.toFixed(2)}`;
-  }
-}
-
-function readItemsFromInputs() {
-  document.querySelectorAll(".item-row").forEach(row => {
-    const id = row.dataset.id;
-    const item = items.find(entry => entry.id === id);
-    if (!item) return;
-
-    item.name = row.querySelector(".item-name").value;
-    item.qty = row.querySelector(".item-qty").value;
-    item.price = row.querySelector(".item-price").value;
-  });
-}
-
-function addItem(data = {}) {
-  const item = {
-    id: makeId(),
-    name: String(data.name || ""),
-    qty: data.qty ?? 1,
-    price: data.price ?? ""
-  };
-
-  items.push(item);
-  renderItems();
-
-  const rows = document.querySelectorAll(".item-row");
-  const last = rows[rows.length - 1];
-  if (last) last.querySelector(".item-name").focus();
-
-  renderPreview();
-}
-
-function renderItems() {
-  const container = $("itemsList");
-
-  if (!items.length) {
-    container.innerHTML = "";
-    $("itemCount").textContent = "0 items";
-    renderPreview();
-    return;
-  }
-
-  container.innerHTML = `
-    <div class="item-labels">
-      <span>Item</span>
-      <span>Quantity</span>
-      <span>Unit price</span>
-      <span></span>
-    </div>
-    ${items.map(item => `
-      <div class="item-row" data-id="${escapeHtml(item.id)}">
-        <input
-          class="item-name"
-          type="text"
-          maxlength="100"
-          placeholder="Item name"
-          aria-label="Item name"
-          value="${escapeHtml(item.name)}"
-        >
-        <input
-          class="item-qty"
-          type="number"
-          min="0"
-          step="any"
-          aria-label="Quantity"
-          placeholder="Qty"
-          value="${escapeHtml(item.qty)}"
-        >
-        <input
-          class="item-price"
-          type="number"
-          min="0"
-          step="0.01"
-          aria-label="Unit price"
-          placeholder="Price"
-          value="${escapeHtml(item.price)}"
-        >
-        <button class="remove-item" type="button" aria-label="Remove item">×</button>
-      </div>
-    `).join("")}
-  `;
-
-  const namedCount = items.filter(item => item.name.trim()).length;
-  $("itemCount").textContent = `${namedCount} item${namedCount === 1 ? "" : "s"}`;
-}
-
-function totalCost() {
-  return items.reduce((sum, item) => {
-    const quantity = Math.max(0, Number(item.qty) || 0);
-    const price = Math.max(0, Number(item.price) || 0);
-    return sum + quantity * price;
-  }, 0);
-}
-
-function renderPreview() {
-  $("previewTitle").textContent =
-    $("listTitle").value.trim() || "Shopping List";
-
-  $("previewSubtitle").textContent = $("subtitle").value.trim();
-
-  const total = totalCost();
-  $("previewTotal").textContent = money(total);
-
-  const budgetRaw = $("budget").value;
-  const hasBudget = budgetRaw !== "" && Number(budgetRaw) >= 0;
-  const budget = hasBudget ? Number(budgetRaw) : null;
-
-  $("previewBudgetBlock").style.display = hasBudget ? "" : "none";
-  $("previewDifferenceBlock").style.display = hasBudget ? "" : "none";
-
-  if (hasBudget) {
-    const difference = budget - total;
-
-    $("previewBudget").textContent = money(budget);
-    $("differenceLabel").textContent =
-      difference >= 0 ? "LEFT OVER" : "OVER BUDGET";
-
-    $("previewDifference").textContent = money(Math.abs(difference));
-    $("previewDifference").style.color =
-      difference < 0 ? "#bd5b48" : "var(--preview-accent)";
-  }
-
-  const namedItems = items.filter(item => item.name.trim());
-
-  if (!namedItems.length) {
-    $("previewItems").innerHTML =
-      '<p class="empty-preview">Your items will appear here. Add your first item above!</p>';
-  } else {
-    $("previewItems").innerHTML = namedItems.map(item => {
-      const quantity = Math.max(0, Number(item.qty) || 0);
-      const price = Math.max(0, Number(item.price) || 0);
-
-      const showQuantity = $("showQuantities").checked;
-      const showPrice = $("showPrices").checked;
-
-      const meta = [
-        showQuantity ? `× ${quantity}` : "",
-        showPrice && item.price !== "" ? money(quantity * price) : ""
-      ].filter(Boolean).join(" · ");
-
-      return `
-        <div class="preview-item">
-          <span class="preview-check"></span>
-          <span class="preview-item-name">${escapeHtml(item.name)}</span>
-          ${meta ? `<span class="preview-item-meta">${escapeHtml(meta)}</span>` : ""}
-        </div>
-      `;
-    }).join("");
-  }
-
-  const preview = $("listPreview");
-  preview.className = `list-preview theme-${activeTemplate}`;
-  preview.style.background = templates[activeTemplate].background;
-  preview.style.color = templates[activeTemplate].color;
-  preview.style.setProperty("--preview-accent", accentColor);
-}
-
-function currentList() {
-  readItemsFromInputs();
-
-  return {
-    id: activeSavedId || makeId(),
-    title: $("listTitle").value.trim() || "Shopping List",
-    currency: getCurrency(),
-    budget: $("budget").value,
-    subtitle: $("subtitle").value,
-    items: items.map(({ name, qty, price }) => ({ name, qty, price })),
-    template: activeTemplate,
-    accentColor,
-    showQuantities: $("showQuantities").checked,
-    showPrices: $("showPrices").checked,
-    updatedAt: new Date().toISOString()
-  };
-}
-
-function loadList(data) {
-  $("listTitle").value = data.title || "Shopping List";
-  $("currency").value = currencies[data.currency] ? data.currency : "NGN";
-  $("budget").value = data.budget ?? "";
-  $("subtitle").value = data.subtitle || "";
-
-  activeTemplate = templates[data.template] ? data.template : "cream";
-  accentColor = data.accentColor || templates[activeTemplate].accent;
-  activeSavedId = data.id || null;
-
-  $("showQuantities").checked = data.showQuantities !== false;
-  $("showPrices").checked = data.showPrices !== false;
-
-  items = (Array.isArray(data.items) ? data.items : []).map(item => ({
-    id: makeId(),
-    name: String(item.name || ""),
-    qty: item.qty ?? 1,
-    price: item.price ?? ""
-  }));
-
-  document.querySelectorAll(".template-option").forEach(button => {
-    button.classList.toggle(
-      "active",
-      button.dataset.template === activeTemplate
-    );
-  });
-
-  document.querySelectorAll(".color-dot").forEach(button => {
-    button.classList.toggle(
-      "selected",
-      button.dataset.color === accentColor
-    );
-  });
-
-  renderItems();
-  renderPreview();
-  showStatus("List loaded.");
-}
-
-function readSavedLists() {
-  try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    return Array.isArray(stored) ? stored : [];
-  } catch (error) {
-    console.error("Could not read saved lists:", error);
-    return [];
-  }
-}
-
-function persistSavedLists() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(savedLists));
-    return true;
-  } catch (error) {
-    console.error("Could not save lists:", error);
-    showStatus("Could not save. Browser storage may be full or unavailable.", true);
-    return false;
-  }
-}
-
-function renderSavedLists() {
-  const container = $("savedLists");
-
-  if (!savedLists.length) {
-    container.innerHTML =
-      '<p class="empty-saved">Your saved lists will show up here.</p>';
-    return;
-  }
-
-  container.innerHTML = savedLists.map(list => {
-    const count = (list.items || []).filter(
-      item => String(item.name || "").trim()
-    ).length;
-
-    const total = (list.items || []).reduce((sum, item) => {
-      return sum
-        + Math.max(0, Number(item.qty) || 0)
-        * Math.max(0, Number(item.price) || 0);
-    }, 0);
-
-    let formatted;
+    const currency = $("currency").value;
+    const settings = CURRENCIES[currency] || CURRENCIES.NGN;
 
     try {
-      formatted = new Intl.NumberFormat("en", {
-        style: "currency",
-        currency: list.currency || "NGN"
-      }).format(total);
+        return new Intl.NumberFormat(settings.locale, {
+            style: "currency",
+            currency,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(Number(value) || 0);
     } catch {
-      formatted = `${list.currency || "NGN"} ${total.toFixed(2)}`;
+        return settings.symbol + (Number(value) || 0).toFixed(2);
+    }
+}
+
+function currencySymbol() {
+    return (CURRENCIES[$("currency").value] || CURRENCIES.NGN).symbol;
+}
+
+function numberValue(value) {
+    const n = Number(value);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function quantityValue(value) {
+    const text = String(value ?? "").trim();
+    if (!text) return 0;
+
+    const fraction = text.match(/^(\d+)\s*\/\s*(\d+)$/);
+    if (fraction && Number(fraction[2]) !== 0) {
+        return Number(fraction[1]) / Number(fraction[2]);
     }
 
-    return `
-      <article class="saved-card">
-        <h3>${escapeHtml(list.title || "Shopping List")}</h3>
-        <p>${count} item${count === 1 ? "" : "s"} · ${escapeHtml(formatted)}</p>
-        <div class="saved-card-actions">
-          <button class="load-saved" type="button" data-load="${escapeHtml(list.id)}">Open list</button>
-          <button class="delete-saved" type="button" data-delete="${escapeHtml(list.id)}">Delete</button>
-        </div>
-      </article>
-    `;
-  }).join("");
+    const n = Number(text);
+    if (Number.isFinite(n) && n > 0) return n;
+
+    const match = text.match(/^\s*(\d+(?:\.\d+)?)/);
+    return match ? numberValue(match[1]) : 0;
 }
 
-function showStatus(message, isError = false) {
-  const status = $("statusMessage");
-  status.textContent = message;
-  status.classList.toggle("error", isError);
+function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>"']/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;",
+        '"': "&quot;", "'": "&#39;"
+    })[c]);
 }
 
-function resetList() {
-  $("listTitle").value = "Shopping List";
-  $("currency").value = "NGN";
-  $("budget").value = "";
-  $("subtitle").value = "";
+function addRow(name = "", quantity = "", price = "") {
+    const row = { id: nextId++, name, quantity, price };
+    rows.push(row);
+    renderRows();
 
-  activeTemplate = "cream";
-  accentColor = templates.cream.accent;
-  activeSavedId = null;
-  items = [];
-
-  $("showQuantities").checked = true;
-  $("showPrices").checked = true;
-
-  document.querySelectorAll(".template-option").forEach(button => {
-    button.classList.toggle("active", button.dataset.template === "cream");
-  });
-
-  document.querySelectorAll(".color-dot").forEach(button => {
-    button.classList.toggle("selected", button.dataset.color === accentColor);
-  });
-
-  renderItems();
-  renderPreview();
-  showStatus("Started a fresh list.");
+    const input = itemsBody.querySelector(
+        `tr[data-id="${row.id}"] .name-input`
+    );
+    if (input) input.focus();
 }
 
-$("addItemBtn").addEventListener("click", () => addItem());
-$("newListBtn").addEventListener("click", resetList);
+function renderRows() {
+    itemsBody.innerHTML = rows.map((row, index) => `
+        <tr data-id="${row.id}">
+            <td class="row-number">${index + 1}</td>
+            <td>
+                <input class="cell-input name-input" type="text"
+                    aria-label="Item name" placeholder="Item name"
+                    value="${escapeHTML(row.name)}">
+            </td>
+            <td>
+                <input class="cell-input quantity-input" type="text"
+                    inputmode="decimal" aria-label="Quantity"
+                    placeholder="e.g. 2" value="${escapeHTML(row.quantity)}">
+            </td>
+            <td>
+                <input class="cell-input price-input" type="number"
+                    min="0" step="0.01" inputmode="decimal"
+                    aria-label="Unit price" placeholder="Unit price"
+                    value="${escapeHTML(row.price)}">
+                <div class="line-amount">—</div>
+            </td>
+            <td class="action-col">
+                <button class="remove-row" type="button"
+                    aria-label="Remove item" title="Remove item">×</button>
+            </td>
+        </tr>
+    `).join("");
 
-$("clearBtn").addEventListener("click", () => {
-  items = [];
-  renderItems();
-  renderPreview();
-  showStatus("Items cleared.");
-});
+    updateTotals();
+}
 
-$("saveBtn").addEventListener("click", () => {
-  const data = currentList();
+function readRows() {
+    itemsBody.querySelectorAll("tr").forEach(tr => {
+        const row = rows.find(item => item.id === Number(tr.dataset.id));
+        if (!row) return;
 
-  if (!data.items.some(item => item.name.trim())) {
-    showStatus("Add at least one named item before saving.", true);
-    return;
-  }
+        row.name = tr.querySelector(".name-input").value;
+        row.quantity = tr.querySelector(".quantity-input").value;
+        row.price = tr.querySelector(".price-input").value;
+    });
+}
 
-  const existingIndex = savedLists.findIndex(list => list.id === data.id);
+function updateTotals() {
+    let total = 0;
 
-  if (existingIndex >= 0) {
-    savedLists[existingIndex] = data;
-  } else {
-    savedLists.unshift(data);
-  }
+    itemsBody.querySelectorAll("tr").forEach(tr => {
+        const row = rows.find(item => item.id === Number(tr.dataset.id));
+        if (!row) return;
 
-  savedLists = savedLists.slice(0, 50);
+        const hasQuantity = row.quantity.trim() !== "";
+        const hasPrice = row.price !== "";
+        const amount = quantityValue(row.quantity) * numberValue(row.price);
 
-  if (persistSavedLists()) {
-    activeSavedId = data.id;
-    renderSavedLists();
-    showStatus("List saved in this browser.");
-  }
-});
+        total += amount;
 
-$("itemsList").addEventListener("input", event => {
-  if (!event.target.matches("input")) return;
-
-  readItemsFromInputs();
-  renderPreview();
-});
-
-$("itemsList").addEventListener("click", event => {
-  const button = event.target.closest(".remove-item");
-  if (!button) return;
-
-  const row = button.closest(".item-row");
-  const id = row.dataset.id;
-
-  items = items.filter(item => item.id !== id);
-  renderItems();
-  renderPreview();
-});
-
-["listTitle", "currency", "budget", "subtitle", "showQuantities", "showPrices"]
-  .forEach(id => {
-    $(id).addEventListener("input", renderPreview);
-    $(id).addEventListener("change", renderPreview);
-  });
-
-$("templates").addEventListener("click", event => {
-  const button = event.target.closest("[data-template]");
-  if (!button) return;
-
-  activeTemplate = button.dataset.template;
-  accentColor = templates[activeTemplate].accent;
-
-  document.querySelectorAll(".template-option").forEach(option => {
-    option.classList.toggle("active", option === button);
-  });
-
-  document.querySelectorAll(".color-dot").forEach(dot => {
-    dot.classList.toggle("selected", dot.dataset.color === accentColor);
-  });
-
-  renderPreview();
-});
-
-document.querySelectorAll(".color-dot").forEach(button => {
-  button.addEventListener("click", () => {
-    accentColor = button.dataset.color;
-
-    document.querySelectorAll(".color-dot").forEach(dot => {
-      dot.classList.toggle("selected", dot === button);
+        tr.querySelector(".line-amount").textContent =
+            hasQuantity && hasPrice ? money(amount) : "—";
     });
 
-    renderPreview();
-  });
+    $("totalInside").textContent = money(total);
+    $("totalOutside").textContent = money(total);
+
+    const budgetText = $("budget").value.trim();
+    const hasBudget = budgetText !== "" &&
+        Number.isFinite(Number(budgetText)) && Number(budgetText) >= 0;
+
+    const budget = hasBudget ? Number(budgetText) : null;
+    const remaining = hasBudget ? budget - total : null;
+
+    $("budgetInside").textContent = hasBudget ? money(budget) : "—";
+    $("remainingInside").textContent = hasBudget ? money(remaining) : "—";
+    $("remainingOutside").textContent = hasBudget ? money(remaining) : "—";
+
+    const overBudget = remaining !== null && remaining < 0;
+    $("remainingInside").style.color = overBudget ? "#ff8277" : "";
+    $("remainingOutside").style.color = overBudget ? "#b43e31" : "";
+
+    return { total, hasBudget, budget, remaining };
+}
+
+/* Item controls */
+$("addRow").addEventListener("click", () => addRow());
+
+$("clearRows").addEventListener("click", () => {
+    rows = [];
+    renderRows();
+    setStatus("All items cleared.");
 });
 
-$("savedLists").addEventListener("click", event => {
-  const loadButton = event.target.closest("[data-load]");
-  const deleteButton = event.target.closest("[data-delete]");
-
-  if (loadButton) {
-    const list = savedLists.find(entry => entry.id === loadButton.dataset.load);
-
-    if (list) {
-      loadList(list);
-      $("builder").scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }
-
-  if (deleteButton) {
-    const id = deleteButton.dataset.delete;
-
-    savedLists = savedLists.filter(entry => entry.id !== id);
-
-    if (persistSavedLists()) {
-      if (activeSavedId === id) activeSavedId = null;
-      renderSavedLists();
-      showStatus("Saved list deleted.");
-    }
-  }
+itemsBody.addEventListener("input", () => {
+    readRows();
+    updateTotals();
 });
 
-$("downloadBtn").addEventListener("click", async () => {
-  renderPreview();
+itemsBody.addEventListener("click", event => {
+    const button = event.target.closest(".remove-row");
+    if (!button) return;
 
-  const node = $("listPreview");
-  const downloadButton = $("downloadBtn");
+    const id = Number(button.closest("tr").dataset.id);
+    rows = rows.filter(row => row.id !== id);
+    renderRows();
+    setStatus("Item removed.");
+});
 
-  downloadButton.disabled = true;
-  downloadButton.textContent = "Preparing image…";
+/* Template selection */
+function selectedTemplate() {
+    return $("template").value;
+}
 
-  try {
-    const width = Math.ceil(node.getBoundingClientRect().width);
-    const height = Math.ceil(node.getBoundingClientRect().height);
+function applyTemplate(template, resetColour = true) {
+    if (!DEFAULTS[template]) template = "original";
 
-    if (!width || !height) {
-      throw new Error("The preview has no size.");
+    paper.className = `paper ${template}`;
+
+    if (resetColour) {
+        $("background").value = DEFAULTS[template].background;
     }
 
-    const clone = node.cloneNode(true);
-    clone.style.width = `${width}px`;
-    clone.style.height = "auto";
-    clone.style.fontFamily = "Arial, sans-serif";
+    applyBackground();
+}
 
-    const html = new XMLSerializer().serializeToString(clone);
+$("template").addEventListener("change", () => {
+    applyTemplate(selectedTemplate(), true);
+});
 
-    const svg = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-        <foreignObject width="100%" height="100%">
-          <div xmlns="http://www.w3.org/1999/xhtml"
-               style="width:${width}px;min-height:${height}px;font-family:Arial,sans-serif">
-            ${html}
-          </div>
-        </foreignObject>
-      </svg>
-    `;
+/* Background colour */
+function applyBackground() {
+    paper.style.setProperty("--paper-bg", $("background").value);
+}
 
-    const svgBlob = new Blob([svg], {
-      type: "image/svg+xml;charset=utf-8"
+$("background").addEventListener("input", applyBackground);
+
+$("resetBackground").addEventListener("click", () => {
+    $("background").value = DEFAULTS[selectedTemplate()].background;
+    applyBackground();
+    setStatus("Default background colour restored.");
+});
+
+/* Editable heading and text */
+const textBindings = [
+    ["heading", "previewHeading"],
+    ["subtitle", "previewSubtitle"],
+    ["decorativeText", "previewDecorative"],
+    ["footerText", "previewFooter"]
+];
+
+function formatDecorativeText(value) {
+    return escapeHTML(value).replace(/,\s*/g, "<br>");
+}
+
+textBindings.forEach(([inputId, previewId]) => {
+    const input = $(inputId);
+    const preview = $(previewId);
+
+    input.addEventListener("input", () => {
+        if (previewId === "previewDecorative") {
+            preview.innerHTML = formatDecorativeText(input.value);
+        } else {
+            preview.textContent = input.value;
+        }
     });
 
-    const svgUrl = URL.createObjectURL(svgBlob);
-    const image = new Image();
+    preview.addEventListener("input", () => {
+        input.value = preview.innerText.replace(/\n/g, " ").trim();
+    });
+});
 
-    image.onload = () => {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = width * 2;
-        canvas.height = height * 2;
+/* Currency switcher */
+function updateCurrencyDisplay() {
+    document.querySelectorAll(".currencySymbol").forEach(el => {
+        el.textContent = currencySymbol();
+    });
+    updateTotals();
+}
 
-        const context = canvas.getContext("2d");
-        if (!context) throw new Error("Canvas unavailable.");
+$("currency").addEventListener("change", () => {
+    updateCurrencyDisplay();
+    setStatus("Currency display changed. Prices have not been converted.");
+});
 
-        context.scale(2, 2);
-        context.drawImage(image, 0, 0, width, height);
+/* Budget */
+$("budget").addEventListener("input", updateTotals);
 
-        canvas.toBlob(png => {
-          URL.revokeObjectURL(svgUrl);
+/* Saving and loading lists */
+function setStatus(message) {
+    $("status").textContent = message;
+}
 
-          if (!png) {
-            showStatus("Image export failed in this browser.", true);
-            return;
-          }
+function getSavedLists() {
+    try {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        return Array.isArray(data) ? data : [];
+    } catch {
+        return [];
+    }
+}
 
-          const pngUrl = URL.createObjectURL(png);
-          const link = document.createElement("a");
-
-          link.href = pngUrl;
-          link.download =
-            `${($("listTitle").value.trim() || "shopping-list")
-              .replace(/[^a-z0-9-_]+/gi, "-")
-              .toLowerCase()}.png`;
-
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
-
-          setTimeout(() => URL.revokeObjectURL(pngUrl), 1500);
-          showStatus("Your PNG download is ready.");
-        }, "image/png");
-      } catch (error) {
-        URL.revokeObjectURL(svgUrl);
+function putSavedLists(lists) {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(lists));
+        return true;
+    } catch (error) {
         console.error(error);
-        showStatus("Could not export the image in this browser.", true);
-      }
-    };
+        setStatus("Could not save. Browser storage may be full or disabled.");
+        return false;
+    }
+}
 
-    image.onerror = () => {
-      URL.revokeObjectURL(svgUrl);
-      showStatus(
-        "This browser couldn't export the image. Try opening the website in another browser.",
-        true
-      );
-    };
+function refreshSavedLists(selectId = "") {
+    const select = $("savedLists");
+    const lists = getSavedLists();
 
-    image.src = svgUrl;
-  } catch (error) {
-    console.error(error);
-    showStatus("Could not export the image. Please try again.", true);
-  } finally {
-    downloadButton.disabled = false;
-    downloadButton.textContent = "↓ Download list as image";
-  }
+    select.innerHTML = "";
+
+    if (!lists.length) {
+        select.add(new Option("No saved lists yet", ""));
+    } else {
+        select.add(new Option("Choose a saved list", ""));
+        lists.forEach(list => {
+            select.add(new Option(list.name, list.id));
+        });
+    }
+
+    if (selectId && lists.some(list => list.id === selectId)) {
+        select.value = selectId;
+    }
+
+    $("updateList").disabled = !select.value;
+    $("deleteList").disabled = !select.value;
+}
+
+function captureList() {
+    readRows();
+
+    return {
+        name: $("listName").value.trim(),
+        template: selectedTemplate(),
+        background: $("background").value,
+        heading: $("heading").value,
+        subtitle: $("subtitle").value,
+        decorativeText: $("decorativeText").value,
+        footerText: $("footerText").value,
+        budget: $("budget").value,
+        currency: $("currency").value,
+        rows: rows.map(row => ({
+            name: row.name,
+            quantity: row.quantity,
+            price: row.price
+        }))
+    };
+}
+
+function makeId() {
+    return Date.now().toString(36) +
+        Math.random().toString(36).slice(2, 8);
+}
+
+function saveList() {
+    const name = $("listName").value.trim();
+
+    if (!name) {
+        $("listName").focus();
+        setStatus("Enter a name for your list before saving.");
+        return;
+    }
+
+    const lists = getSavedLists();
+    const data = captureList();
+
+    data.id = makeId();
+    data.name = name;
+    data.updatedAt = new Date().toISOString();
+
+    lists.push(data);
+
+    if (!putSavedLists(lists)) return;
+
+    currentSavedId = data.id;
+    refreshSavedLists(currentSavedId);
+    setStatus(`"${name}" has been saved.`);
+}
+
+function updateSavedList() {
+    const id = $("savedLists").value || currentSavedId;
+
+    if (!id) {
+        setStatus("Select a saved list to update.");
+        return;
+    }
+
+    const lists = getSavedLists();
+    const index = lists.findIndex(list => list.id === id);
+
+    if (index < 0) {
+        setStatus("That saved list could not be found.");
+        refreshSavedLists();
+        return;
+    }
+
+    const data = captureList();
+    data.id = id;
+    data.name = $("listName").value.trim() || lists[index].name;
+    data.updatedAt = new Date().toISOString();
+
+    lists[index] = data;
+
+    if (!putSavedLists(lists)) return;
+
+    currentSavedId = id;
+    refreshSavedLists(id);
+    setStatus(`"${data.name}" has been updated.`);
+}
+
+function loadSavedList() {
+    const id = $("savedLists").value;
+
+    if (!id) {
+        setStatus("Choose a saved list to load.");
+        return;
+    }
+
+    const data = getSavedLists().find(list => list.id === id);
+
+    if (!data) {
+        setStatus("Saved list not found.");
+        refreshSavedLists();
+        return;
+    }
+
+    currentSavedId = data.id;
+
+    $("listName").value = data.name || "";
+    $("template").value = DEFAULTS[data.template] ? data.template : "original";
+    $("background").value = data.background || DEFAULTS[$("template").value].background;
+    $("heading").value = data.heading || "Shopping List";
+    $("subtitle").value = data.subtitle || "";
+    $("decorativeText").value = data.decorativeText || "";
+    $("footerText").value = data.footerText || "";
+    $("budget").value = data.budget ?? "";
+    $("currency").value = CURRENCIES[data.currency] ? data.currency : "NGN";
+
+    $("previewHeading").textContent = $("heading").value;
+    $("previewSubtitle").textContent = $("subtitle").value;
+    $("previewDecorative").innerHTML = formatDecorativeText($("decorativeText").value);
+    $("previewFooter").textContent = $("footerText").value;
+
+    rows = (Array.isArray(data.rows) ? data.rows : []).map(row => ({
+        id: nextId++,
+        name: row.name || "",
+        quantity: row.quantity || "",
+        price: row.price ?? ""
+    }));
+
+    applyTemplate($("template").value, false);
+    updateCurrencyDisplay();
+    renderRows();
+    refreshSavedLists(id);
+    setStatus(`"${data.name}" has been loaded.`);
+}
+
+function deleteSavedList() {
+    const id = $("savedLists").value;
+
+    if (!id) {
+        setStatus("Choose a saved list to delete.");
+        return;
+    }
+
+    const lists = getSavedLists();
+    const selected = lists.find(list => list.id === id);
+    const remaining = lists.filter(list => list.id !== id);
+
+    if (!putSavedLists(remaining)) return;
+
+    if (currentSavedId === id) currentSavedId = "";
+
+    refreshSavedLists();
+    setStatus(`"${selected?.name || "List"}" has been deleted.`);
+}
+
+$("saveList").addEventListener("click", saveList);
+$("updateList").addEventListener("click", updateSavedList);
+$("loadList").addEventListener("click", loadSavedList);
+$("deleteList").addEventListener("click", deleteSavedList);
+
+$("savedLists").addEventListener("change", () => {
+    const id = $("savedLists").value;
+    $("updateList").disabled = !id;
+    $("deleteList").disabled = !id;
 });
 
-// Start with a blank, reusable shopping list.
-$("listTitle").value = "Shopping List";
-$("subtitle").value = "";
-$("budget").value = "";
-$("currency").value = "NGN";
-items = [];
+/* PNG export helpers */
+function drawText(ctx, text, x, y, options = {}) {
+    ctx.font = options.font || "16px Arial";
+    ctx.fillStyle = options.color || "#222";
+    ctx.textAlign = options.align || "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(text ?? ""), x, y, options.maxWidth);
+}
 
-// Restore saved lists from this browser.
-savedLists = readSavedLists();
+function wrapText(ctx, text, x, y, maxWidth, lineHeight, options = {}) {
+    ctx.font = options.font || "16px Arial";
+    ctx.fillStyle = options.color || "#222";
+    ctx.textAlign = options.align || "left";
+    ctx.textBaseline = "middle";
 
-renderItems();
-renderPreview();
-renderSavedLists();
+    let line = "";
+    let currentY = y;
+
+    for (const word of String(text || "").split(/\s+/)) {
+        const test = line ? `${line} ${word}` : word;
+
+        if (ctx.measureText(test).width > maxWidth && line) {
+            ctx.fillText(line, x, currentY);
+            currentY += lineHeight;
+            line = word;
+        } else {
+            line = test;
+        }
+    }
+
+    if (line) ctx.fillText(line, x, currentY);
+}
+
+function roundedRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+}
+
+function drawShoppingList() {
+    readRows();
+    const totals = updateTotals();
+    const template = selectedTemplate();
+
+    const palette = {
+        background: $("background").value,
+        text: template === "original" ? "#f3f6ff" :
+              template === "classic" ? "#343a30" :
+              template === "market" ? "#3c3024" : "#252525",
+        accent: template === "original" ? "#10e6a3" :
+                template === "classic" ? "#648057" :
+                template === "market" ? "#c34e2d" : "#252525",
+        line: template === "original" ? "#245c7b" :
+              template === "classic" ? "#ded8c8" :
+              template === "market" ? "#e4c99e" : "#ddd",
+        head: template === "original" ? "#102632" :
+              template === "classic" ? "#eee8d9" :
+              template === "market" ? "#f2dfb9" : "#f4f4f4"
+    };
+
+    const title = $("previewHeading").innerText.trim() || "Shopping List";
+    const subtitle = $("previewSubtitle").innerText.trim();
+    const decorative = $("previewDecorative").innerText.trim();
+    const footer = $("previewFooter").innerText.trim();
+    const visibleRows = rows.filter(row =>
+        row.name.trim() || row.quantity.trim() || row.price !== ""
+    );
+
+    const width = 1000;
+    const margin = 40;
+    const tableY = template === "market" ? 190 : 160;
+    const headerH = 55;
+    const rowH = 60;
+    const totalH = 65;
+    const count = Math.max(visibleRows.length, 1);
+    const tableH = headerH + count * rowH + totalH;
+    const showBudget = template !== "minimal";
+    const budgetH = showBudget ? 100 : 0;
+    const height = tableY + tableH + budgetH + (showBudget ? 100 : 25);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width * 2;
+    canvas.height = height * 2;
+
+    const ctx = canvas.getContext("2d");
+    ctx.scale(2, 2);
+    ctx.fillStyle = palette.background;
+    ctx.fillRect(0, 0, width, height);
+
+    const tableX = margin;
+    const tableW = width - margin * 2;
+    const endX = tableX + tableW;
+    const numberX = tableX;
+    const itemX = tableX + 75;
+    const quantityX = tableX + tableW * .53;
+    const amountX = tableX + tableW * .77;
+
+    /* Header layouts differ by template. */
+    if (template === "original") {
+        drawText(ctx, "🛒", margin + 35, 60, {
+            font: "48px Arial", color: palette.accent, align: "center"
+        });
+        drawText(ctx, title, margin + 80, 50, {
+            font: "bold 43px Arial", color: palette.text, maxWidth: 590
+        });
+        drawText(ctx, subtitle, margin + 80, 95, {
+            font: "bold 18px Arial", color: palette.text, maxWidth: 590
+        });
+        drawText(ctx, decorative.replace(/\n/g, " "), endX, 60, {
+            font: "bold 19px Georgia", color: palette.accent, align: "right",
+            maxWidth: 160
+        });
+    } else if (template === "classic") {
+        drawText(ctx, title, margin, 45, {
+            font: "bold 42px Georgia", color: palette.text, maxWidth: tableW
+        });
+        drawText(ctx, subtitle, margin, 90, {
+            font: "20px Georgia", color: palette.text, maxWidth: tableW
+        });
+        ctx.strokeStyle = palette.accent;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(margin, 125);
+        ctx.lineTo(endX, 125);
+        ctx.stroke();
+        drawText(ctx, decorative.replace(/\n/g, " "), endX, 143, {
+            font: "italic 17px Georgia", color: palette.accent, align: "right"
+        });
+    } else if (template === "market") {
+        ctx.fillStyle = palette.head;
+        roundedRect(ctx, margin, 25, tableW, 140, 14);
+        ctx.fill();
+        ctx.fillStyle = palette.accent;
+        ctx.fillRect(margin, 158, tableW, 7);
+        drawText(ctx, title, margin + 20, 60, {
+            font: "bold 42px Georgia", color: palette.text, maxWidth: tableW - 40
+        });
+        drawText(ctx, subtitle, margin + 20, 100, {
+            font: "19px Arial", color: palette.text, maxWidth: tableW - 40
+        });
+        drawText(ctx, decorative.replace(/\n/g, " "), margin + 20, 138, {
+            font: "bold 17px Georgia", color: palette.accent
+        });
+    } else {
+        drawText(ctx, title, margin, 55, {
+            font: "bold 42px Arial", color: palette.text, maxWidth: tableW
+        });
+        drawText(ctx, subtitle, margin, 100, {
+            font: "20px Arial", color: "#777", maxWidth: tableW
+        });
+        ctx.fillStyle = palette.text;
+        ctx.fillRect(margin, 132, tableW, 3);
+    }
+
+    /* Table header */
+    ctx.fillStyle = palette.head;
+    ctx.fillRect(tableX, tableY, tableW, headerH);
+    ctx.strokeStyle = palette.line;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(tableX, tableY, tableW, tableH);
+
+    drawText(ctx, "#", numberX + 37, tableY + 28, {
+        font: "bold 20px Arial", color: palette.text, align: "center"
+    });
+    drawText(ctx, "Item", itemX + 8, tableY + 28, {
+        font: "bold 20px Arial", color: palette.text
+    });
+    drawText(ctx, "Quantity", quantityX + 8, tableY + 28, {
+        font: "bold 17px Arial", color: palette.text
+    });
+    drawText(ctx, `Amount (${currencySymbol()})`, endX - 10, tableY + 28, {
+        font: "bold 17px Arial", color: palette.text, align: "right"
+    });
+
+    [itemX, quantityX, amountX].forEach(x => {
+        ctx.beginPath();
+        ct
