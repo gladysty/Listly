@@ -1,203 +1,375 @@
 "use strict";
 
+
+/* =================================
+   ELEMENTS AND DEFAULT SETTINGS
+================================= */
+
 const $ = id => document.getElementById(id);
+
 const paper = $("paper");
 const itemsBody = $("items");
 
 let rows = [];
 let nextId = 1;
-let currentSavedId = "";
-const STORAGE_KEY = "listly_saved_lists_v1";
-
-const CURRENCIES = {
-    NGN: { locale: "en-NG", symbol: "₦" },
-    USD: { locale: "en-US", symbol: "$" },
-    GBP: { locale: "en-GB", symbol: "£" },
-    EUR: { locale: "de-DE", symbol: "€" },
-    GHS: { locale: "en-GH", symbol: "GH₵" },
-    KES: { locale: "en-KE", symbol: "KSh" },
-    ZAR: { locale: "en-ZA", symbol: "R" },
-    CAD: { locale: "en-CA", symbol: "C$" },
-    INR: { locale: "en-IN", symbol: "₹" }
-};
 
 const DEFAULTS = {
-    original: { background: "#07151b" },
-    classic: { background: "#fffaf0" },
-    market: { background: "#fff7e8" },
-    minimal: { background: "#ffffff" }
+    original: {
+        background: "#07151b",
+        text: "#f3f6ff",
+        accent: "#10e6a3",
+        line: "#245c7b",
+        head: "#102632"
+    },
+
+    classic: {
+        background: "#fffaf0",
+        text: "#343a30",
+        accent: "#648057",
+        line: "#ded8c8",
+        head: "#eee8d9"
+    },
+
+    market: {
+        background: "#fff7e8",
+        text: "#3c3024",
+        accent: "#c34e2d",
+        line: "#e4c99e",
+        head: "#f2dfb9"
+    },
+
+    minimal: {
+        background: "#ffffff",
+        text: "#252525",
+        accent: "#252525",
+        line: "#dddddd",
+        head: "#f4f4f4"
+    }
 };
 
+const CURRENCY = "NGN";
+
+
+/* =================================
+   CURRENCY AND NUMBER HELPERS
+================================= */
+
 function money(value) {
-    const currency = $("currency").value;
-    const settings = CURRENCIES[currency] || CURRENCIES.NGN;
-
-    try {
-        return new Intl.NumberFormat(settings.locale, {
-            style: "currency",
-            currency,
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).format(Number(value) || 0);
-    } catch {
-        return settings.symbol + (Number(value) || 0).toFixed(2);
-    }
-}
-
-function currencySymbol() {
-    return (CURRENCIES[$("currency").value] || CURRENCIES.NGN).symbol;
+    return new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: CURRENCY,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(Number(value) || 0);
 }
 
 function numberValue(value) {
-    const n = Number(value);
-    return Number.isFinite(n) && n > 0 ? n : 0;
+    const number = Number(value);
+
+    return Number.isFinite(number) && number > 0
+        ? number
+        : 0;
 }
 
 function quantityValue(value) {
     const text = String(value ?? "").trim();
+
     if (!text) return 0;
 
+    // Support fractions such as 1/2 and 3/4.
     const fraction = text.match(/^(\d+)\s*\/\s*(\d+)$/);
+
     if (fraction && Number(fraction[2]) !== 0) {
         return Number(fraction[1]) / Number(fraction[2]);
     }
 
-    const n = Number(text);
-    if (Number.isFinite(n) && n > 0) return n;
+    // Support decimal and whole quantities.
+    const number = Number(text);
 
+    if (Number.isFinite(number) && number > 0) {
+        return number;
+    }
+
+    /*
+      For text quantities such as "2 packs", calculate using
+      the first number while preserving the text in the list.
+    */
     const match = text.match(/^\s*(\d+(?:\.\d+)?)/);
-    return match ? numberValue(match[1]) : 0;
+
+    if (match) {
+        return numberValue(match[1]);
+    }
+
+    return 0;
 }
 
 function escapeHTML(value) {
-    return String(value ?? "").replace(/[&<>"']/g, c => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;",
-        '"': "&quot;", "'": "&#39;"
-    })[c]);
+    return String(value ?? "").replace(/[&<>"']/g, character => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[character]);
 }
 
+
+/* =================================
+   ADDING AND RENDERING ROWS
+================================= */
+
 function addRow(name = "", quantity = "", price = "") {
-    const row = { id: nextId++, name, quantity, price };
+
+    const row = {
+        id: nextId++,
+        name,
+        quantity,
+        price
+    };
+
     rows.push(row);
+
     renderRows();
 
     const input = itemsBody.querySelector(
         `tr[data-id="${row.id}"] .name-input`
     );
-    if (input) input.focus();
+
+    if (input) {
+        input.focus();
+    }
 }
 
 function renderRows() {
+
     itemsBody.innerHTML = rows.map((row, index) => `
+
         <tr data-id="${row.id}">
-            <td class="row-number">${index + 1}</td>
-            <td>
-                <input class="cell-input name-input" type="text"
-                    aria-label="Item name" placeholder="Item name"
-                    value="${escapeHTML(row.name)}">
+
+            <td class="row-number">
+                ${index + 1}
             </td>
+
             <td>
-                <input class="cell-input quantity-input" type="text"
-                    inputmode="decimal" aria-label="Quantity"
-                    placeholder="e.g. 2" value="${escapeHTML(row.quantity)}">
+                <input
+                    class="cell-input name-input"
+                    type="text"
+                    aria-label="Item name"
+                    placeholder="Item name"
+                    value="${escapeHTML(row.name)}"
+                >
             </td>
+
             <td>
-                <input class="cell-input price-input" type="number"
-                    min="0" step="0.01" inputmode="decimal"
-                    aria-label="Unit price" placeholder="Unit price"
-                    value="${escapeHTML(row.price)}">
+                <input
+                    class="cell-input quantity-input"
+                    type="text"
+                    inputmode="decimal"
+                    aria-label="Quantity"
+                    placeholder="e.g. 2"
+                    value="${escapeHTML(row.quantity)}"
+                >
+            </td>
+
+            <td>
+                <input
+                    class="cell-input price-input"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputmode="decimal"
+                    aria-label="Unit price"
+                    placeholder="Unit price"
+                    value="${escapeHTML(row.price)}"
+                >
+
                 <div class="line-amount">—</div>
             </td>
+
             <td class="action-col">
-                <button class="remove-row" type="button"
-                    aria-label="Remove item" title="Remove item">×</button>
+                <button
+                    class="remove-row"
+                    type="button"
+                    aria-label="Remove item"
+                    title="Remove item"
+                >×</button>
             </td>
+
         </tr>
+
     `).join("");
 
     updateTotals();
 }
 
+
+/* =================================
+   READ THE VALUES IN THE TABLE
+================================= */
+
 function readRows() {
+
     itemsBody.querySelectorAll("tr").forEach(tr => {
-        const row = rows.find(item => item.id === Number(tr.dataset.id));
+
+        const id = Number(tr.dataset.id);
+
+        const row = rows.find(item => item.id === id);
+
         if (!row) return;
 
         row.name = tr.querySelector(".name-input").value;
         row.quantity = tr.querySelector(".quantity-input").value;
         row.price = tr.querySelector(".price-input").value;
+
     });
 }
 
+
+/* =================================
+   CALCULATIONS
+================================= */
+
+function calculateTotal() {
+
+    return rows.reduce((sum, row) => {
+
+        const quantity = quantityValue(row.quantity);
+        const price = numberValue(row.price);
+
+        return sum + quantity * price;
+
+    }, 0);
+}
+
 function updateTotals() {
+
     let total = 0;
 
     itemsBody.querySelectorAll("tr").forEach(tr => {
-        const row = rows.find(item => item.id === Number(tr.dataset.id));
+
+        const row = rows.find(
+            item => item.id === Number(tr.dataset.id)
+        );
+
         if (!row) return;
 
-        const hasQuantity = row.quantity.trim() !== "";
-        const hasPrice = row.price !== "";
-        const amount = quantityValue(row.quantity) * numberValue(row.price);
+        const quantity = quantityValue(row.quantity);
+        const price = numberValue(row.price);
+
+        const amount = quantity * price;
 
         total += amount;
 
-        tr.querySelector(".line-amount").textContent =
-            hasQuantity && hasPrice ? money(amount) : "—";
+        const amountElement = tr.querySelector(".line-amount");
+
+        if (row.quantity.trim() !== "" && row.price !== "") {
+            amountElement.textContent = money(amount);
+        } else {
+            amountElement.textContent = "—";
+        }
+
     });
 
     $("totalInside").textContent = money(total);
     $("totalOutside").textContent = money(total);
 
     const budgetText = $("budget").value.trim();
-    const hasBudget = budgetText !== "" &&
-        Number.isFinite(Number(budgetText)) && Number(budgetText) >= 0;
+
+    const hasBudget =
+        budgetText !== "" &&
+        Number.isFinite(Number(budgetText)) &&
+        Number(budgetText) >= 0;
 
     const budget = hasBudget ? Number(budgetText) : null;
+
     const remaining = hasBudget ? budget - total : null;
 
-    $("budgetInside").textContent = hasBudget ? money(budget) : "—";
-    $("remainingInside").textContent = hasBudget ? money(remaining) : "—";
-    $("remainingOutside").textContent = hasBudget ? money(remaining) : "—";
+    $("budgetInside").textContent =
+        hasBudget ? money(budget) : "—";
+
+    $("remainingInside").textContent =
+        hasBudget ? money(remaining) : "—";
+
+    $("remainingOutside").textContent =
+        hasBudget ? money(remaining) : "—";
 
     const overBudget = remaining !== null && remaining < 0;
-    $("remainingInside").style.color = overBudget ? "#ff8277" : "";
-    $("remainingOutside").style.color = overBudget ? "#b43e31" : "";
 
-    return { total, hasBudget, budget, remaining };
+    $("remainingInside").style.color = overBudget
+        ? "#ff8277"
+        : "";
+
+    $("remainingOutside").style.color = overBudget
+        ? "#b43e31"
+        : "";
+
+    return {
+        total,
+        hasBudget,
+        budget,
+        remaining
+    };
 }
 
-/* Item controls */
-$("addRow").addEventListener("click", () => addRow());
+
+/* =================================
+   TABLE INTERACTIONS
+================================= */
+
+$("addRow").addEventListener("click", () => {
+    addRow();
+});
 
 $("clearRows").addEventListener("click", () => {
+
     rows = [];
+
     renderRows();
-    setStatus("All items cleared.");
+
+    $("status").textContent = "All items cleared.";
+
 });
 
 itemsBody.addEventListener("input", () => {
+
     readRows();
+
     updateTotals();
+
 });
 
 itemsBody.addEventListener("click", event => {
+
     const button = event.target.closest(".remove-row");
+
     if (!button) return;
 
-    const id = Number(button.closest("tr").dataset.id);
+    const rowElement = button.closest("tr");
+
+    const id = Number(rowElement.dataset.id);
+
     rows = rows.filter(row => row.id !== id);
+
     renderRows();
-    setStatus("Item removed.");
+
+    $("status").textContent = "Item removed.";
+
 });
 
-/* Template selection */
+
+/* =================================
+   TEMPLATE SELECTION
+================================= */
+
 function selectedTemplate() {
     return $("template").value;
 }
 
 function applyTemplate(template, resetColour = true) {
-    if (!DEFAULTS[template]) template = "original";
+
+    if (!DEFAULTS[template]) {
+        template = "original";
+    }
 
     paper.className = `paper ${template}`;
 
@@ -206,26 +378,60 @@ function applyTemplate(template, resetColour = true) {
     }
 
     applyBackground();
+
+    /*
+      The market template uses a warm background and distinctive
+      card layout. The minimalist template intentionally hides
+      its decorative budget panel and footer.
+    */
 }
 
 $("template").addEventListener("change", () => {
+
     applyTemplate(selectedTemplate(), true);
+
+    $("status").textContent = "Template changed.";
+
 });
 
-/* Background colour */
+
+/* =================================
+   BACKGROUND COLOUR CUSTOMISATION
+================================= */
+
 function applyBackground() {
-    paper.style.setProperty("--paper-bg", $("background").value);
+
+    paper.style.setProperty(
+        "--paper-bg",
+        $("background").value
+    );
+
 }
 
-$("background").addEventListener("input", applyBackground);
+$("background").addEventListener("input", () => {
 
-$("resetBackground").addEventListener("click", () => {
-    $("background").value = DEFAULTS[selectedTemplate()].background;
     applyBackground();
-    setStatus("Default background colour restored.");
+
 });
 
-/* Editable heading and text */
+$("resetBackground").addEventListener("click", () => {
+
+    const template = selectedTemplate();
+
+    $("background").value = DEFAULTS[template].background;
+
+    applyBackground();
+
+    $("status").textContent =
+        "The default background colour has been restored.";
+
+});
+
+
+/* =================================
+   EDITABLE HEADING AND TEXT
+================================= */
+
 const textBindings = [
     ["heading", "previewHeading"],
     ["subtitle", "previewSubtitle"],
@@ -233,424 +439,729 @@ const textBindings = [
     ["footerText", "previewFooter"]
 ];
 
-function formatDecorativeText(value) {
-    return escapeHTML(value).replace(/,\s*/g, "<br>");
+function decorativeTextHTML(value) {
+
+    const parts = String(value)
+        .split(/\s*,\s*/)
+        .map(part => escapeHTML(part));
+
+    if (parts.length > 1) {
+        return parts.join("<br>");
+    }
+
+    return escapeHTML(value);
 }
 
 textBindings.forEach(([inputId, previewId]) => {
+
     const input = $(inputId);
     const preview = $(previewId);
 
     input.addEventListener("input", () => {
+
         if (previewId === "previewDecorative") {
-            preview.innerHTML = formatDecorativeText(input.value);
+            preview.innerHTML = decorativeTextHTML(input.value);
         } else {
             preview.textContent = input.value;
         }
+
     });
 
     preview.addEventListener("input", () => {
-        input.value = preview.innerText.replace(/\n/g, " ").trim();
+
+        const value = preview.innerText
+            .replace(/\n/g, " ")
+            .trim();
+
+        input.value = value;
+
     });
+
 });
 
-/* Currency switcher */
-function updateCurrencyDisplay() {
-    document.querySelectorAll(".currencySymbol").forEach(el => {
-        el.textContent = currencySymbol();
-    });
+
+/* =================================
+   BUDGET
+================================= */
+
+$("budget").addEventListener("input", () => {
+
     updateTotals();
-}
 
-$("currency").addEventListener("change", () => {
-    updateCurrencyDisplay();
-    setStatus("Currency display changed. Prices have not been converted.");
 });
 
-/* Budget */
-$("budget").addEventListener("input", updateTotals);
 
-/* Saving and loading lists */
-function setStatus(message) {
-    $("status").textContent = message;
+/* =================================
+   CANVAS DRAWING HELPERS
+================================= */
+
+function roundedRect(ctx, x, y, width, height, radius) {
+
+    const r = Math.min(radius, width / 2, height / 2);
+
+    ctx.beginPath();
+
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + width - r, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+
+    ctx.lineTo(x + width, y + height - r);
+    ctx.quadraticCurveTo(
+        x + width,
+        y + height,
+        x + width - r,
+        y + height
+    );
+
+    ctx.lineTo(x + r, y + height);
+    ctx.quadraticCurveTo(
+        x,
+        y + height,
+        x,
+        y + height - r
+    );
+
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+
+    ctx.closePath();
+
 }
 
-function getSavedLists() {
-    try {
-        const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-        return Array.isArray(data) ? data : [];
-    } catch {
-        return [];
-    }
-}
-
-function putSavedLists(lists) {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(lists));
-        return true;
-    } catch (error) {
-        console.error(error);
-        setStatus("Could not save. Browser storage may be full or disabled.");
-        return false;
-    }
-}
-
-function refreshSavedLists(selectId = "") {
-    const select = $("savedLists");
-    const lists = getSavedLists();
-
-    select.innerHTML = "";
-
-    if (!lists.length) {
-        select.add(new Option("No saved lists yet", ""));
-    } else {
-        select.add(new Option("Choose a saved list", ""));
-        lists.forEach(list => {
-            select.add(new Option(list.name, list.id));
-        });
-    }
-
-    if (selectId && lists.some(list => list.id === selectId)) {
-        select.value = selectId;
-    }
-
-    $("updateList").disabled = !select.value;
-    $("deleteList").disabled = !select.value;
-}
-
-function captureList() {
-    readRows();
-
-    return {
-        name: $("listName").value.trim(),
-        template: selectedTemplate(),
-        background: $("background").value,
-        heading: $("heading").value,
-        subtitle: $("subtitle").value,
-        decorativeText: $("decorativeText").value,
-        footerText: $("footerText").value,
-        budget: $("budget").value,
-        currency: $("currency").value,
-        rows: rows.map(row => ({
-            name: row.name,
-            quantity: row.quantity,
-            price: row.price
-        }))
-    };
-}
-
-function makeId() {
-    return Date.now().toString(36) +
-        Math.random().toString(36).slice(2, 8);
-}
-
-function saveList() {
-    const name = $("listName").value.trim();
-
-    if (!name) {
-        $("listName").focus();
-        setStatus("Enter a name for your list before saving.");
-        return;
-    }
-
-    const lists = getSavedLists();
-    const data = captureList();
-
-    data.id = makeId();
-    data.name = name;
-    data.updatedAt = new Date().toISOString();
-
-    lists.push(data);
-
-    if (!putSavedLists(lists)) return;
-
-    currentSavedId = data.id;
-    refreshSavedLists(currentSavedId);
-    setStatus(`"${name}" has been saved.`);
-}
-
-function updateSavedList() {
-    const id = $("savedLists").value || currentSavedId;
-
-    if (!id) {
-        setStatus("Select a saved list to update.");
-        return;
-    }
-
-    const lists = getSavedLists();
-    const index = lists.findIndex(list => list.id === id);
-
-    if (index < 0) {
-        setStatus("That saved list could not be found.");
-        refreshSavedLists();
-        return;
-    }
-
-    const data = captureList();
-    data.id = id;
-    data.name = $("listName").value.trim() || lists[index].name;
-    data.updatedAt = new Date().toISOString();
-
-    lists[index] = data;
-
-    if (!putSavedLists(lists)) return;
-
-    currentSavedId = id;
-    refreshSavedLists(id);
-    setStatus(`"${data.name}" has been updated.`);
-}
-
-function loadSavedList() {
-    const id = $("savedLists").value;
-
-    if (!id) {
-        setStatus("Choose a saved list to load.");
-        return;
-    }
-
-    const data = getSavedLists().find(list => list.id === id);
-
-    if (!data) {
-        setStatus("Saved list not found.");
-        refreshSavedLists();
-        return;
-    }
-
-    currentSavedId = data.id;
-
-    $("listName").value = data.name || "";
-    $("template").value = DEFAULTS[data.template] ? data.template : "original";
-    $("background").value = data.background || DEFAULTS[$("template").value].background;
-    $("heading").value = data.heading || "Shopping List";
-    $("subtitle").value = data.subtitle || "";
-    $("decorativeText").value = data.decorativeText || "";
-    $("footerText").value = data.footerText || "";
-    $("budget").value = data.budget ?? "";
-    $("currency").value = CURRENCIES[data.currency] ? data.currency : "NGN";
-
-    $("previewHeading").textContent = $("heading").value;
-    $("previewSubtitle").textContent = $("subtitle").value;
-    $("previewDecorative").innerHTML = formatDecorativeText($("decorativeText").value);
-    $("previewFooter").textContent = $("footerText").value;
-
-    rows = (Array.isArray(data.rows) ? data.rows : []).map(row => ({
-        id: nextId++,
-        name: row.name || "",
-        quantity: row.quantity || "",
-        price: row.price ?? ""
-    }));
-
-    applyTemplate($("template").value, false);
-    updateCurrencyDisplay();
-    renderRows();
-    refreshSavedLists(id);
-    setStatus(`"${data.name}" has been loaded.`);
-}
-
-function deleteSavedList() {
-    const id = $("savedLists").value;
-
-    if (!id) {
-        setStatus("Choose a saved list to delete.");
-        return;
-    }
-
-    const lists = getSavedLists();
-    const selected = lists.find(list => list.id === id);
-    const remaining = lists.filter(list => list.id !== id);
-
-    if (!putSavedLists(remaining)) return;
-
-    if (currentSavedId === id) currentSavedId = "";
-
-    refreshSavedLists();
-    setStatus(`"${selected?.name || "List"}" has been deleted.`);
-}
-
-$("saveList").addEventListener("click", saveList);
-$("updateList").addEventListener("click", updateSavedList);
-$("loadList").addEventListener("click", loadSavedList);
-$("deleteList").addEventListener("click", deleteSavedList);
-
-$("savedLists").addEventListener("change", () => {
-    const id = $("savedLists").value;
-    $("updateList").disabled = !id;
-    $("deleteList").disabled = !id;
-});
-
-/* PNG export helpers */
 function drawText(ctx, text, x, y, options = {}) {
-    ctx.font = options.font || "16px Arial";
-    ctx.fillStyle = options.color || "#222";
-    ctx.textAlign = options.align || "left";
+
+    const {
+        font = "16px Arial",
+        color = "#222222",
+        align = "left",
+        maxWidth
+    } = options;
+
+    ctx.font = font;
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
     ctx.textBaseline = "middle";
-    ctx.fillText(String(text ?? ""), x, y, options.maxWidth);
+
+    if (maxWidth) {
+        ctx.fillText(String(text), x, y, maxWidth);
+    } else {
+        ctx.fillText(String(text), x, y);
+    }
+
 }
 
 function wrapText(ctx, text, x, y, maxWidth, lineHeight, options = {}) {
-    ctx.font = options.font || "16px Arial";
-    ctx.fillStyle = options.color || "#222";
-    ctx.textAlign = options.align || "left";
-    ctx.textBaseline = "middle";
 
+    const words = String(text).split(/\s+/);
     let line = "";
     let currentY = y;
 
-    for (const word of String(text || "").split(/\s+/)) {
-        const test = line ? `${line} ${word}` : word;
+    ctx.font = options.font || "16px Arial";
+    ctx.fillStyle = options.color || "#222222";
+    ctx.textAlign = options.align || "left";
+    ctx.textBaseline = "middle";
 
-        if (ctx.measureText(test).width > maxWidth && line) {
+    for (const word of words) {
+
+        const testLine = line ? `${line} ${word}` : word;
+
+        if (ctx.measureText(testLine).width > maxWidth && line) {
+
             ctx.fillText(line, x, currentY);
+
             currentY += lineHeight;
             line = word;
+
         } else {
-            line = test;
+
+            line = testLine;
+
         }
+
     }
 
-    if (line) ctx.fillText(line, x, currentY);
+    if (line) {
+        ctx.fillText(line, x, currentY);
+    }
+
+    return currentY;
+
 }
 
-function roundedRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, h, r);
-}
+
+/* =================================
+   CREATE THE SHOPPING LIST PNG
+================================= */
 
 function drawShoppingList() {
+
     readRows();
+
     const totals = updateTotals();
+
     const template = selectedTemplate();
 
     const palette = {
-        background: $("background").value,
-        text: template === "original" ? "#f3f6ff" :
-              template === "classic" ? "#343a30" :
-              template === "market" ? "#3c3024" : "#252525",
-        accent: template === "original" ? "#10e6a3" :
-                template === "classic" ? "#648057" :
-                template === "market" ? "#c34e2d" : "#252525",
-        line: template === "original" ? "#245c7b" :
-              template === "classic" ? "#ded8c8" :
-              template === "market" ? "#e4c99e" : "#ddd",
-        head: template === "original" ? "#102632" :
-              template === "classic" ? "#eee8d9" :
-              template === "market" ? "#f2dfb9" : "#f4f4f4"
+        ...DEFAULTS[template],
+        background: $("background").value
     };
 
     const title = $("previewHeading").innerText.trim() || "Shopping List";
     const subtitle = $("previewSubtitle").innerText.trim();
+
     const decorative = $("previewDecorative").innerText.trim();
     const footer = $("previewFooter").innerText.trim();
+
     const visibleRows = rows.filter(row =>
-        row.name.trim() || row.quantity.trim() || row.price !== ""
+        row.name.trim() !== "" ||
+        row.quantity.trim() !== "" ||
+        row.price !== ""
     );
+
+    const outputRows = visibleRows.length ? visibleRows : [];
+
+    /*
+      Portrait output gives the list a shape similar to the
+      original reference design.
+    */
 
     const width = 1000;
     const margin = 40;
-    const tableY = template === "market" ? 190 : 160;
-    const headerH = 55;
-    const rowH = 60;
-    const totalH = 65;
-    const count = Math.max(visibleRows.length, 1);
-    const tableH = headerH + count * rowH + totalH;
+
+    const headerHeight = template === "market" ? 175 : 160;
+    const tableHeaderHeight = 55;
+    const rowHeight = 60;
+
+    const tableX = margin;
+    const tableY = headerHeight;
+
+    const tableWidth = width - margin * 2;
+
+    const tableRows = Math.max(outputRows.length, 1);
+
+    const tableHeight =
+        tableHeaderHeight +
+        tableRows * rowHeight +
+        65;
+
     const showBudget = template !== "minimal";
-    const budgetH = showBudget ? 100 : 0;
-    const height = tableY + tableH + budgetH + (showBudget ? 100 : 25);
+
+    const budgetHeight = showBudget ? 100 : 0;
+    const footerHeight = showBudget ? 75 : 15;
+
+    const height =
+        tableY +
+        tableHeight +
+        budgetHeight +
+        footerHeight +
+        25;
+
+    const scale = 2;
 
     const canvas = document.createElement("canvas");
-    canvas.width = width * 2;
-    canvas.height = height * 2;
+
+    canvas.width = width * scale;
+    canvas.height = height * scale;
 
     const ctx = canvas.getContext("2d");
-    ctx.scale(2, 2);
+
+    ctx.scale(scale, scale);
+
     ctx.fillStyle = palette.background;
     ctx.fillRect(0, 0, width, height);
 
-    const tableX = margin;
-    const tableW = width - margin * 2;
-    const endX = tableX + tableW;
-    const numberX = tableX;
-    const itemX = tableX + 75;
-    const quantityX = tableX + tableW * .53;
-    const amountX = tableX + tableW * .77;
+    const textColor = palette.text;
+    const accentColor = palette.accent;
+    const lineColor = palette.line;
+    const headerColor = palette.head;
 
-    /* Header layouts differ by template. */
+    /* ----- TEMPLATE HEADING ----- */
+
     if (template === "original") {
-        drawText(ctx, "🛒", margin + 35, 60, {
-            font: "48px Arial", color: palette.accent, align: "center"
+
+        drawText(ctx, "🛒", margin + 35, 65, {
+            font: "48px Arial",
+            color: accentColor,
+            align: "center"
         });
-        drawText(ctx, title, margin + 80, 50, {
-            font: "bold 43px Arial", color: palette.text, maxWidth: 590
+
+        drawText(ctx, title, margin + 80, 55, {
+            font: "bold 43px Arial",
+            color: textColor,
+            maxWidth: 590
         });
-        drawText(ctx, subtitle, margin + 80, 95, {
-            font: "bold 18px Arial", color: palette.text, maxWidth: 590
+
+        drawText(ctx, subtitle, margin + 80, 100, {
+            font: "bold 18px Arial",
+            color: textColor,
+            maxWidth: 590
         });
-        drawText(ctx, decorative.replace(/\n/g, " "), endX, 60, {
-            font: "bold 19px Georgia", color: palette.accent, align: "right",
-            maxWidth: 160
+
+        const noteLines = decorative.split(/\n/);
+
+        drawText(ctx, noteLines[0] || "", width - margin, 48, {
+            font: "bold 23px Georgia",
+            color: accentColor,
+            align: "right"
         });
+
+        drawText(ctx, noteLines.slice(1).join(" ") || "", width - margin, 77, {
+            font: "bold 20px Georgia",
+            color: accentColor,
+            align: "right"
+        });
+
     } else if (template === "classic") {
-        drawText(ctx, title, margin, 45, {
-            font: "bold 42px Georgia", color: palette.text, maxWidth: tableW
+
+        drawText(ctx, title, margin, 50, {
+            font: "bold 42px Georgia",
+            color: textColor,
+            maxWidth: tableWidth
         });
-        drawText(ctx, subtitle, margin, 90, {
-            font: "20px Georgia", color: palette.text, maxWidth: tableW
+
+        drawText(ctx, subtitle, margin, 95, {
+            font: "20px Georgia",
+            color: textColor,
+            maxWidth: tableWidth
         });
-        ctx.strokeStyle = palette.accent;
+
+        ctx.strokeStyle = accentColor;
         ctx.lineWidth = 3;
+
         ctx.beginPath();
-        ctx.moveTo(margin, 125);
-        ctx.lineTo(endX, 125);
+        ctx.moveTo(margin, 130);
+        ctx.lineTo(width - margin, 130);
         ctx.stroke();
-        drawText(ctx, decorative.replace(/\n/g, " "), endX, 143, {
-            font: "italic 17px Georgia", color: palette.accent, align: "right"
+
+        drawText(ctx, decorative.replace(/\n/g, " "), width - margin, 147, {
+            font: "italic 16px Georgia",
+            color: accentColor,
+            align: "right"
         });
+
     } else if (template === "market") {
-        ctx.fillStyle = palette.head;
-        roundedRect(ctx, margin, 25, tableW, 140, 14);
+
+        ctx.fillStyle = headerColor;
+
+        roundedRect(ctx, margin, 25, tableWidth, 130, 14);
+
         ctx.fill();
-        ctx.fillStyle = palette.accent;
-        ctx.fillRect(margin, 158, tableW, 7);
-        drawText(ctx, title, margin + 20, 60, {
-            font: "bold 42px Georgia", color: palette.text, maxWidth: tableW - 40
+
+        ctx.fillStyle = accentColor;
+        ctx.fillRect(margin, 145, tableWidth, 7);
+
+        drawText(ctx, title, margin + 20, 65, {
+            font: "bold 42px Georgia",
+            color: textColor,
+            maxWidth: tableWidth - 40
         });
-        drawText(ctx, subtitle, margin + 20, 100, {
-            font: "19px Arial", color: palette.text, maxWidth: tableW - 40
+
+        drawText(ctx, subtitle, margin + 20, 103, {
+            font: "19px Arial",
+            color: textColor,
+            maxWidth: tableWidth - 40
         });
-        drawText(ctx, decorative.replace(/\n/g, " "), margin + 20, 138, {
-            font: "bold 17px Georgia", color: palette.accent
+
+        drawText(ctx, decorative.replace(/\n/g, " "), margin + 20, 133, {
+            font: "bold 17px Georgia",
+            color: accentColor
         });
+
     } else {
+
         drawText(ctx, title, margin, 55, {
-            font: "bold 42px Arial", color: palette.text, maxWidth: tableW
+            font: "bold 42px Arial",
+            color: textColor,
+            maxWidth: tableWidth
         });
+
         drawText(ctx, subtitle, margin, 100, {
-            font: "20px Arial", color: "#777", maxWidth: tableW
+            font: "20px Arial",
+            color: "#777777",
+            maxWidth: tableWidth
         });
-        ctx.fillStyle = palette.text;
-        ctx.fillRect(margin, 132, tableW, 3);
+
+        ctx.fillStyle = textColor;
+        ctx.fillRect(margin, 132, tableWidth, 3);
+
     }
 
-    /* Table header */
-    ctx.fillStyle = palette.head;
-    ctx.fillRect(tableX, tableY, tableW, headerH);
-    ctx.strokeStyle = palette.line;
+
+    /* ----- TABLE COLUMNS ----- */
+
+    const numberX = tableX;
+    const itemX = tableX + 75;
+    const quantityX = tableX + tableWidth * 0.53;
+    const amountX = tableX + tableWidth * 0.77;
+    const endX = tableX + tableWidth;
+
+    const numberWidth = 75;
+    const itemWidth = quantityX - itemX - 10;
+    const quantityWidth = amountX - quantityX - 15;
+    const amountWidth = endX - amountX;
+
+    const headerY = tableY;
+    const bodyY = tableY + tableHeaderHeight;
+
+    /* ----- TABLE HEADER ----- */
+
+    ctx.fillStyle = headerColor;
+    ctx.fillRect(tableX, headerY, tableWidth, tableHeaderHeight);
+
+    ctx.strokeStyle = lineColor;
     ctx.lineWidth = 1.5;
-    ctx.strokeRect(tableX, tableY, tableW, tableH);
 
-    drawText(ctx, "#", numberX + 37, tableY + 28, {
-        font: "bold 20px Arial", color: palette.text, align: "center"
-    });
-    drawText(ctx, "Item", itemX + 8, tableY + 28, {
-        font: "bold 20px Arial", color: palette.text
-    });
-    drawText(ctx, "Quantity", quantityX + 8, tableY + 28, {
-        font: "bold 17px Arial", color: palette.text
-    });
-    drawText(ctx, `Amount (${currencySymbol()})`, endX - 10, tableY + 28, {
-        font: "bold 17px Arial", color: palette.text, align: "right"
+    ctx.strokeRect(
+        tableX,
+        headerY,
+        tableWidth,
+        tableHeight
+    );
+
+    drawText(ctx, "#", numberX + numberWidth / 2, headerY + 28, {
+        font: "bold 20px Arial",
+        color: textColor,
+        align: "center"
     });
 
-    [itemX, quantityX, amountX].forEach(x => {
+    drawText(ctx, "Item", itemX + 8, headerY + 28, {
+        font: "bold 20px Arial",
+        color: textColor
+    });
+
+    drawText(ctx, "Quantity", quantityX + 8, headerY + 28, {
+        font: "bold 17px Arial",
+        color: textColor
+    });
+
+    drawText(ctx, "Amount (₦)", endX - 10, headerY + 28, {
+        font: "bold 17px Arial",
+        color: textColor,
+        align: "right"
+    });
+
+    /* ----- TABLE VERTICAL LINES ----- */
+
+    const boundaries = [
+        itemX,
+        quantityX,
+        amountX
+    ];
+
+    ctx.strokeStyle = lineColor;
+
+    boundaries.forEach(x => {
+
         ctx.beginPath();
-        ct
+
+        ctx.moveTo(x, headerY);
+        ctx.lineTo(x, headerY + tableHeight);
+
+        ctx.stroke();
+
+    });
+
+    /* ----- TABLE ROWS ----- */
+
+    outputRows.forEach((row, index) => {
+
+        const y = bodyY + index * rowHeight;
+
+        if (template === "market" && index % 2 === 1) {
+
+            ctx.fillStyle = "#f8efd9";
+
+            ctx.fillRect(
+                tableX + 1,
+                y,
+                tableWidth - 2,
+                rowHeight
+            );
+
+        }
+
+        ctx.strokeStyle = lineColor;
+
+        ctx.beginPath();
+        ctx.moveTo(tableX, y + rowHeight);
+        ctx.lineTo(endX, y + rowHeight);
+        ctx.stroke();
+
+        const quantity = quantityValue(row.quantity);
+        const price = numberValue(row.price);
+        const amount = quantity * price;
+
+        drawText(ctx, String(index + 1), numberX + numberWidth / 2, y + 30, {
+            font: "bold 18px Arial",
+            color: accentColor,
+            align: "center"
+        });
+
+        wrapText(
+            ctx,
+            row.name || "",
+            itemX + 8,
+            y + 30,
+            itemWidth - 15,
+            19,
+            {
+                font: "bold 17px Arial",
+                color: textColor
+            }
+        );
+
+        drawText(
+            ctx,
+            row.quantity || "",
+            quantityX + 8,
+            y + 30,
+            {
+                font: "16px Arial",
+                color: textColor,
+                maxWidth: quantityWidth - 10
+            }
+        );
+
+        drawText(
+            ctx,
+            row.quantity.trim() !== "" && row.price !== ""
+                ? money(amount)
+                : "—",
+            endX - 10,
+            y + 30,
+            {
+                font: "bold 17px Arial",
+                color: textColor,
+                align: "right",
+                maxWidth: amountWidth - 10
+            }
+        );
+
+    });
+
+    /* ----- EMPTY LIST MESSAGE ----- */
+
+    if (outputRows.length === 0) {
+
+        drawText(
+            ctx,
+            "Your shopping list",
+            width / 2,
+            bodyY + 30,
+            {
+                font: "17px Arial",
+                color: textColor,
+                align: "center"
+            }
+        );
+
+    }
+
+
+    /* ----- TOTAL ----- */
+
+    const totalY = bodyY + tableRows * rowHeight;
+
+    ctx.fillStyle = palette.background;
+
+    ctx.fillRect(
+        tableX + 1,
+        totalY,
+        tableWidth - 2,
+        65
+    );
+
+    ctx.strokeStyle = lineColor;
+
+    ctx.beginPath();
+    ctx.moveTo(tableX, totalY);
+    ctx.lineTo(endX, totalY);
+    ctx.stroke();
+
+    drawText(ctx, "TOTAL", amountX - 18, totalY + 31, {
+        font: "bold 24px Arial",
+        color: textColor,
+        align: "right"
+    });
+
+    drawText(ctx, money(totals.total), endX - 10, totalY + 31, {
+        font: "bold 24px Arial",
+        color: accentColor,
+        align: "right",
+        maxWidth: amountWidth - 10
+    });
+
+
+    /* ----- BUDGET PANEL ----- */
+
+    if (showBudget) {
+
+        const budgetY = tableY + tableHeight + 18;
+
+        ctx.strokeStyle = accentColor;
+        ctx.lineWidth = 3;
+
+        roundedRect(
+            ctx,
+            margin,
+            budgetY,
+            tableWidth,
+            82,
+            template === "market" ? 28 : 14
+        );
+
+        ctx.stroke();
+
+        drawText(ctx, "▣", margin + 42, budgetY + 41, {
+            font: "bold 37px Arial",
+            color: accentColor,
+            align: "center"
+        });
+
+        ctx.beginPath();
+        ctx.moveTo(margin + 90, budgetY + 12);
+        ctx.lineTo(margin + 90, budgetY + 70);
+        ctx.stroke();
+
+        drawText(ctx, "Total Budget:", margin + 115, budgetY + 27, {
+            font: "bold 19px Arial",
+            color: textColor
+        });
+
+        drawText(ctx, "Remaining:", margin + 115, budgetY + 56, {
+            font: "bold 19px Arial",
+            color: textColor
+        });
+
+        const budgetValue = totals.hasBudget
+            ? money(totals.budget)
+            : "—";
+
+        const remainingValue = totals.hasBudget
+            ? money(totals.remaining)
+            : "—";
+
+        drawText(ctx, budgetValue, margin + 320, budgetY + 27, {
+            font: "bold 19px Arial",
+            color: accentColor
+        });
+
+        drawText(ctx, remainingValue, margin + 320, budgetY + 56, {
+            font: "bold 19px Arial",
+            color: totals.remaining < 0 ? "#ff8277" : accentColor
+        });
+
+    }
+
+
+    /* ----- FOOTER ----- */
+
+    if (showBudget) {
+
+        const footerY = tableY + tableHeight + budgetHeight + 18;
+
+        drawText(
+            ctx,
+            footer,
+            width / 2,
+            footerY,
+            {
+                font: "bold 25px Georgia",
+                color: accentColor,
+                align: "center",
+                maxWidth: tableWidth
+            }
+        );
+
+    }
+
+    return canvas;
+}
+
+
+/* =================================
+   DOWNLOAD PNG
+================================= */
+
+$("downloadBtn").addEventListener("click", async () => {
+
+    const button = $("downloadBtn");
+
+    button.disabled = true;
+    button.textContent = "Preparing image...";
+
+    $("status").textContent = "";
+
+    try {
+
+        const canvas = drawShoppingList();
+
+        const blob = await new Promise((resolve, reject) => {
+
+            canvas.toBlob(result => {
+
+                if (result) {
+                    resolve(result);
+                } else {
+                    reject(new Error("Could not create PNG."));
+                }
+
+            }, "image/png");
+
+        });
+
+        const url = URL.createObjectURL(blob);
+
+        const title = $("heading").value.trim() || "Shopping List";
+
+        const filename = title
+            .replace(/[<>:"/\\|?*\x00-\x1F]/g, "")
+            .replace(/\s+/g, "-")
+            .toLowerCase();
+
+        const link = document.createElement("a");
+
+        link.href = url;
+        link.download = `${filename || "shopping-list"}.png`;
+
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+        $("status").textContent =
+            "Your shopping list PNG is ready.";
+
+    } catch (error) {
+
+        console.error("PNG export error:", error);
+
+        $("status").textContent =
+            "The image could not be downloaded. Please try again in Chrome.";
+
+    } finally {
+
+        button.disabled = false;
+        button.textContent = "↓ Download PNG";
+
+    }
+
+});
+
+
+/* =================================
+   INITIALISE THE WEBSITE
+================================= */
+
+// Start with Template 1 and its original background.
+$("template").value = "original";
+
+$("background").value = DEFAULTS.original.background;
+
+applyTemplate("original", false);
+
+// The template starts blank: no example items or prices.
+rows = [];
+
+renderRows();
