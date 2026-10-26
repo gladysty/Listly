@@ -1,5 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Caveat:wght@600;700&display=swap');
 
+
+/* =========================
+   GENERAL WEBSITE
+========================= */
+
 :root {
     --green: #10e6a3;
     --ink: #252b2a;
@@ -7,7 +12,9 @@
     --border: #e5e5df;
 }
 
-* { box-sizing: border-box; }
+* {
+    box-sizing: border-box;
+}
 
 body {
     margin: 0;
@@ -16,14 +23,22 @@ body {
     font-family: "DM Sans", Arial, sans-serif;
 }
 
-button, input, select { font: inherit; }
-button { cursor: pointer; }
+button,
+input,
+select {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+}
 
 .topbar {
     min-height: 65px;
     padding: 12px 5%;
     background: white;
     border-bottom: 1px solid var(--border);
+
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -38,10 +53,13 @@ button { cursor: pointer; }
     letter-spacing: -1.5px;
 }
 
-.brand span { color: #10a779; }
+.brand span {
+    color: #10a779;
+}
 
-.download-btn, .primary-btn {
-    border: 0;
+.download-btn,
+.primary-btn {
+    border: none;
     border-radius: 8px;
     background: #173b31;
     color: white;
@@ -49,8 +67,15 @@ button { cursor: pointer; }
     padding: 12px 17px;
 }
 
-.download-btn:hover, .primary-btn:hover { background: #225748; }
-button:disabled { opacity: .5; cursor: not-allowed; }
+.download-btn:hover,
+.primary-btn:hover {
+    background: #225748;
+}
+
+.download-btn:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
 
 .app {
     width: min(1050px, 94%);
@@ -73,7 +98,8 @@ label {
     font-weight: 700;
 }
 
-input, select {
+input,
+select {
     width: 100%;
     min-width: 0;
     padding: 11px;
@@ -83,14 +109,17 @@ input, select {
     color: #252b2a;
 }
 
-input:focus, select:focus {
+input:focus,
+select:focus {
     outline: 2px solid #b6e9d4;
     border-color: #4b9a7b;
 }
 
-#template { margin-top: 7px; }
+#template {
+    margin-top: 7px;
+}
 
-.customise, .save-section, .budget-settings {
+.customise {
     margin-top: 17px;
     padding-top: 15px;
     border-top: 1px solid #efeee9;
@@ -109,10 +138,9 @@ input:focus, select:focus {
     margin-top: 16px;
 }
 
-.colour-controls, .save-actions {
+.colour-controls {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
     gap: 10px;
 }
 
@@ -124,29 +152,35 @@ input:focus, select:focus {
     cursor: pointer;
 }
 
-.reset-colour, .secondary-btn {
-    padding: 10px 12px;
-    border: 1px solid #deded8;
+.reset-colour {
+    border: 1px solid #dcded8;
+    background: #fff;
     border-radius: 7px;
-    background: white;
+    padding: 10px 12px;
     color: #343a35;
     font-size: 12px;
     font-weight: 600;
 }
 
-.reset-colour:hover, .secondary-btn:hover { background: #f3f2ec; }
-.danger { color: #b43e31; }
-.save-section h3 { margin: 0 0 13px; font-size: 14px; }
-.save-section label { margin: 12px 0; }
-.save-actions { margin: 10px 0 14px; }
-.save-actions button { flex: 1; }
-.small-note, .hint, #status {
+.reset-colour:hover {
+    background: #f3f2ec;
+}
+
+.small-note {
     color: var(--muted);
     font-size: 11px;
     line-height: 1.5;
 }
 
-.budget-settings > label + label { margin-top: 14px; }
+.budget-settings {
+    margin-top: 18px;
+    padding-top: 17px;
+    border-top: 1px solid #efeee9;
+}
+
+.budget-settings > input {
+    margin-top: 7px;
+}
 
 .budget-summary {
     display: flex;
@@ -155,11 +189,27 @@ input:focus, select:focus {
     margin-top: 13px;
 }
 
-.budget-summary div { display: flex; flex-direction: column; gap: 4px; }
-.budget-summary span { color: var(--muted); font-size: 11px; }
-.budget-summary strong { font-size: 15px; color: #247756; }
+.budget-summary div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
 
-/* Shared list layout */
+.budget-summary span {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.budget-summary strong {
+    font-size: 15px;
+    color: #247756;
+}
+
+
+/* =========================
+   COMMON SHOPPING LIST
+========================= */
+
 .paper {
     --paper-bg: #07151b;
     --paper-text: #f3f6ff;
@@ -184,9 +234,19 @@ input:focus, select:focus {
     margin-bottom: 25px;
 }
 
-.cart-icon { color: var(--paper-accent); }
-.cart-icon svg { display: block; width: 100%; max-width: 65px; }
-.heading-text { min-width: 0; }
+.cart-icon {
+    color: var(--paper-accent);
+}
+
+.cart-icon svg {
+    display: block;
+    width: 100%;
+    max-width: 65px;
+}
+
+.heading-text {
+    min-width: 0;
+}
 
 .heading-text h1 {
     font-size: clamp(25px, 4.5vw, 46px);
@@ -216,10 +276,19 @@ input:focus, select:focus {
     overflow-wrap: anywhere;
 }
 
-[contenteditable="true"] { outline: none; cursor: text; }
-[contenteditable="true"]:focus { outline: 1px dashed var(--paper-accent); outline-offset: 4px; }
+[contenteditable="true"] {
+    outline: none;
+    cursor: text;
+}
 
-.table-wrap { width: 100%; }
+[contenteditable="true"]:focus {
+    outline: 1px dashed var(--paper-accent);
+    outline-offset: 4px;
+}
+
+.table-wrap {
+    width: 100%;
+}
 
 .shopping-table {
     width: 100%;
@@ -231,15 +300,22 @@ input:focus, select:focus {
     overflow: hidden;
 }
 
-.shopping-table th, .shopping-table td {
+.shopping-table th,
+.shopping-table td {
     padding: 11px 8px;
     border-right: 1px solid var(--paper-line);
     border-bottom: 1px solid var(--paper-line);
     vertical-align: middle;
 }
 
-.shopping-table th:last-child, .shopping-table td:last-child { border-right: 0; }
-.shopping-table tfoot td { border-bottom: 0; }
+.shopping-table th:last-child,
+.shopping-table td:last-child {
+    border-right: 0;
+}
+
+.shopping-table tfoot td {
+    border-bottom: 0;
+}
 
 .shopping-table th {
     background: var(--paper-head);
@@ -248,14 +324,34 @@ input:focus, select:focus {
     font-weight: 800;
 }
 
-.number-col { width: 7%; }
-.item-col { width: 30%; }
-.quantity-col { width: 21%; }
-.amount-col { width: 27%; }
-.action-col { width: 9%; }
+.number-col {
+    width: 7%;
+}
 
-.shopping-table tbody td { font-size: clamp(11px, 1.55vw, 17px); }
-.row-number { text-align: center; font-weight: 800; }
+.item-col {
+    width: 30%;
+}
+
+.quantity-col {
+    width: 21%;
+}
+
+.amount-col {
+    width: 27%;
+}
+
+.action-col {
+    width: 9%;
+}
+
+.shopping-table tbody td {
+    font-size: clamp(11px, 1.55vw, 17px);
+}
+
+.row-number {
+    text-align: center;
+    font-weight: 800;
+}
 
 .cell-input {
     display: block;
@@ -271,10 +367,22 @@ input:focus, select:focus {
     font-weight: 600;
 }
 
-.cell-input:focus { outline: 1px dashed var(--paper-accent); }
-.cell-input::placeholder { color: currentColor; opacity: .45; }
-.quantity-input { text-align: center; }
-.price-input { text-align: right; }
+.cell-input:focus {
+    outline: 1px dashed var(--paper-accent);
+}
+
+.cell-input::placeholder {
+    color: currentColor;
+    opacity: 0.45;
+}
+
+.quantity-input {
+    text-align: center;
+}
+
+.price-input {
+    text-align: right;
+}
 
 .line-amount {
     text-align: right;
@@ -285,7 +393,7 @@ input:focus, select:focus {
 .remove-row {
     width: 100%;
     padding: 3px;
-    border: 0;
+    border: none;
     background: transparent;
     color: #e78b83;
     font-size: 18px;
@@ -323,9 +431,16 @@ input:focus, select:focus {
     color: var(--paper-accent);
 }
 
-.wallet-icon svg { display: block; width: 100%; }
+.wallet-icon svg {
+    display: block;
+    width: 100%;
+}
 
-.budget-details { flex: 1; display: grid; gap: 8px; }
+.budget-details {
+    flex: 1;
+    display: grid;
+    gap: 8px;
+}
 
 .budget-details div {
     display: grid;
@@ -336,7 +451,10 @@ input:focus, select:focus {
     font-weight: 700;
 }
 
-.budget-details strong { color: var(--paper-accent); overflow-wrap: anywhere; }
+.budget-details strong {
+    color: var(--paper-accent);
+    overflow-wrap: anywhere;
+}
 
 .list-footer {
     margin-top: 17px;
@@ -348,9 +466,38 @@ input:focus, select:focus {
     overflow-wrap: anywhere;
 }
 
-.list-actions { display: flex; gap: 10px; margin-top: 16px; }
+.list-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
 
-/* Template 1: original neon table */
+.secondary-btn {
+    padding: 11px 16px;
+    border: 1px solid #deded8;
+    border-radius: 8px;
+    background: white;
+    color: #252b2a;
+    font-weight: 600;
+}
+
+.hint,
+#status {
+    color: #777d78;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+#status {
+    color: #247756;
+}
+
+
+/* =========================
+   TEMPLATE 1
+   ORIGINAL NEON TABLE
+========================= */
+
 .paper.original {
     --paper-bg: #07151b;
     --paper-text: #f3f6ff;
@@ -359,13 +506,27 @@ input:focus, select:focus {
     --paper-head: #102632;
 }
 
-/* Template 2: fresh paper checklist */
+.paper.original .heading-text h1 {
+    letter-spacing: -1.7px;
+}
+
+.paper.original .budget-panel {
+    border-radius: 15px;
+}
+
+
+/* =========================
+   TEMPLATE 2
+   FRESH & SIMPLE
+========================= */
+
 .paper.classic {
     --paper-bg: #fffaf0;
     --paper-text: #343a30;
     --paper-accent: #648057;
     --paper-line: #ded8c8;
     --paper-head: #eee8d9;
+
     border: 1px solid #ded8c8;
     border-radius: 14px;
     box-shadow: none;
@@ -377,54 +538,176 @@ input:focus, select:focus {
     border-bottom: 2px solid var(--paper-accent);
 }
 
-.paper.classic .cart-icon { display: none; }
-.paper.classic .heading-text h1 { font-family: Georgia, serif; letter-spacing: -1px; }
-.paper.classic .heading-text p { font-family: Georgia, serif; font-weight: 400; }
-.paper.classic .heading-note { transform: none; }
-.paper.classic .shopping-table { border: none; border-radius: 0; }
-.paper.classic .shopping-table th { text-align: left; background: transparent; }
-.paper.classic .shopping-table th, .paper.classic .shopping-table td { border-right: 0; border-left: 0; }
-.paper.classic .row-number { color: var(--paper-accent); }
-.paper.classic .budget-panel { border-radius: 6px; }
-.paper.classic .list-footer { font-family: Georgia, serif; font-style: italic; }
+.paper.classic .cart-icon {
+    display: none;
+}
 
-/* Template 3: market-inspired card */
+.paper.classic .heading-text h1 {
+    font-family: Georgia, serif;
+    font-weight: 700;
+    letter-spacing: -1px;
+}
+
+.paper.classic .heading-text p {
+    font-family: Georgia, serif;
+    font-weight: 400;
+}
+
+.paper.classic .heading-note {
+    font-family: "Caveat", cursive;
+    transform: none;
+}
+
+.paper.classic .shopping-table {
+    border: none;
+    border-radius: 0;
+}
+
+.paper.classic .shopping-table th {
+    text-align: left;
+    background: transparent;
+    border-top: 0;
+}
+
+.paper.classic .shopping-table th,
+.paper.classic .shopping-table td {
+    border-right: 0;
+    border-left: 0;
+}
+
+.paper.classic .number-col {
+    width: 8%;
+}
+
+.paper.classic .item-col {
+    width: 31%;
+}
+
+.paper.classic .quantity-col {
+    width: 24%;
+}
+
+.paper.classic .amount-col {
+    width: 27%;
+}
+
+.paper.classic .action-col {
+    width: 10%;
+}
+
+.paper.classic .row-number {
+    color: var(--paper-accent);
+}
+
+.paper.classic .budget-panel {
+    border-radius: 6px;
+}
+
+.paper.classic .list-footer {
+    font-family: Georgia, serif;
+    font-style: italic;
+}
+
+
+/* =========================
+   TEMPLATE 3
+   MARKET DAY
+========================= */
+
 .paper.market {
     --paper-bg: #fff7e8;
     --paper-text: #3c3024;
     --paper-accent: #c34e2d;
     --paper-line: #e4c99e;
     --paper-head: #f2dfb9;
+
     border: 3px solid #c34e2d;
     border-radius: 20px;
+    padding: clamp(14px, 3vw, 30px);
 }
 
 .paper.market .list-heading {
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
+    margin: -4px -4px 22px;
     padding: 20px;
-    background: var(--paper-head);
+    background: #f2dfb9;
     border-radius: 13px;
-    border-bottom: 5px solid var(--paper-accent);
+    border-bottom: 5px solid #c34e2d;
 }
 
-.paper.market .cart-icon { display: none; }
-.paper.market .heading-text h1 { font-family: Georgia, serif; letter-spacing: -1px; }
-.paper.market .heading-note { max-width: none; text-align: left; transform: none; }
-.paper.market .shopping-table { border: 2px solid var(--paper-line); border-radius: 12px; }
-.paper.market .shopping-table th { background: var(--paper-head); color: #573d29; }
-.paper.market .shopping-table tbody tr:nth-child(even) { background: #f8efd9; }
-.paper.market .shopping-table th, .paper.market .shopping-table td { border-color: var(--paper-line); }
-.paper.market .row-number, .paper.market .total-value { color: var(--paper-accent); }
-.paper.market .budget-panel { border-radius: 28px; background: #fff0d4; }
+.paper.market .cart-icon {
+    display: none;
+}
 
-/* Template 4: minimalist */
+.paper.market .heading-text h1 {
+    font-family: Georgia, serif;
+    font-size: clamp(30px, 5vw, 48px);
+    letter-spacing: -1px;
+}
+
+.paper.market .heading-text p {
+    font-weight: 600;
+}
+
+.paper.market .heading-note {
+    max-width: none;
+    text-align: left;
+    transform: none;
+    font-family: "Caveat", cursive;
+    font-size: clamp(19px, 2.6vw, 27px);
+}
+
+.paper.market .shopping-table {
+    border: 2px solid var(--paper-line);
+    border-radius: 12px;
+}
+
+.paper.market .shopping-table th {
+    background: #f2dfb9;
+    color: #573d29;
+}
+
+.paper.market .shopping-table tbody tr:nth-child(even) {
+    background: #f8efd9;
+}
+
+.paper.market .shopping-table th,
+.paper.market .shopping-table td {
+    border-color: var(--paper-line);
+}
+
+.paper.market .row-number {
+    color: #c34e2d;
+}
+
+.paper.market .total-value {
+    color: #c34e2d;
+}
+
+.paper.market .budget-panel {
+    border-radius: 28px;
+    background: #fff0d4;
+}
+
+.paper.market .list-footer {
+    color: #c34e2d;
+    font-size: clamp(19px, 3vw, 29px);
+}
+
+
+/* =========================
+   TEMPLATE 4
+   MINIMALIST
+========================= */
+
 .paper.minimal {
-    --paper-bg: #fff;
+    --paper-bg: #ffffff;
     --paper-text: #252525;
     --paper-accent: #252525;
-    --paper-line: #ddd;
+    --paper-line: #dddddd;
     --paper-head: #f4f4f4;
+
     border: 1px solid #ddd;
     border-radius: 0;
     box-shadow: none;
@@ -439,41 +722,193 @@ input:focus, select:focus {
 .paper.minimal .cart-icon,
 .paper.minimal .heading-note,
 .paper.minimal .budget-panel,
-.paper.minimal .list-footer { display: none; }
+.paper.minimal .list-footer {
+    display: none;
+}
 
-.paper.minimal .heading-text h1 { letter-spacing: -1px; }
-.paper.minimal .heading-text p { font-weight: 400; color: #666; }
-.paper.minimal .shopping-table { border: none; border-radius: 0; }
-.paper.minimal .shopping-table th { text-align: left; background: #f4f4f4; }
-.paper.minimal .shopping-table th, .paper.minimal .shopping-table td { border-right: 0; border-left: 0; }
-.paper.minimal .total-value { color: #252525; }
+.paper.minimal .heading-text h1 {
+    font-size: clamp(28px, 4vw, 40px);
+    letter-spacing: -1px;
+}
+
+.paper.minimal .heading-text p {
+    font-weight: 400;
+    color: #666;
+}
+
+.paper.minimal .shopping-table {
+    border: none;
+    border-radius: 0;
+}
+
+.paper.minimal .shopping-table th {
+    text-align: left;
+    background: #f4f4f4;
+}
+
+.paper.minimal .shopping-table th,
+.paper.minimal .shopping-table td {
+    border-right: 0;
+    border-left: 0;
+}
+
+.paper.minimal .shopping-table th:first-child,
+.paper.minimal .shopping-table td:first-child {
+    text-align: left;
+}
+
+.paper.minimal .total-value {
+    color: #252525;
+}
+
+.paper.minimal .total-label {
+    letter-spacing: 1px;
+}
+
+
+/* =========================
+   RESPONSIVE DESIGN
+========================= */
 
 @media (max-width: 600px) {
-    .topbar { padding: 12px 4%; }
-    .brand { font-size: 22px; }
-    .download-btn { padding: 10px; font-size: 12px; }
-    .app { width: 96%; margin: 16px auto; }
-    .settings { padding: 14px; }
-    .customise-grid { grid-template-columns: 1fr; }
-    .budget-summary { gap: 22px; }
-    .paper { padding: 12px 8px; }
-    .list-heading { grid-template-columns: 38px minmax(0, 1fr) auto; gap: 7px; }
-    .heading-note { max-width: 58px; font-size: 14px; }
-    .cart-icon svg { width: 38px; }
-    .shopping-table th, .shopping-table td { padding: 8px 3px; }
-    .shopping-table th { font-size: 9px; overflow-wrap: anywhere; }
-    .shopping-table tbody td { font-size: 11px; }
-    .cell-input { padding: 2px 1px; font-size: 10px; }
-    .remove-row { font-size: 15px; }
-    .budget-panel { gap: 10px; padding: 10px; }
-    .wallet-icon { width: 50px; padding-right: 10px; }
-    .budget-details div { font-size: 11px; gap: 6px; }
-    .list-actions button { flex: 1; padding: 11px 5px; font-size: 12px; }
-    .paper.market .list-heading { padding: 13px; }
+
+    .topbar {
+        padding: 12px 4%;
+    }
+
+    .brand {
+        font-size: 22px;
+    }
+
+    .download-btn {
+        padding: 10px;
+        font-size: 12px;
+    }
+
+    .app {
+        width: 96%;
+        margin: 16px auto;
+    }
+
+    .settings {
+        padding: 14px;
+    }
+
+    .customise-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .budget-summary {
+        gap: 22px;
+    }
+
+    .paper {
+        padding: 12px 8px;
+    }
+
+    .list-heading {
+        grid-template-columns: 38px minmax(0, 1fr) auto;
+        gap: 7px;
+    }
+
+    .heading-note {
+        max-width: 58px;
+        font-size: 14px;
+    }
+
+    .cart-icon svg {
+        width: 38px;
+    }
+
+    .shopping-table th,
+    .shopping-table td {
+        padding: 8px 3px;
+    }
+
+    .shopping-table th {
+        font-size: 9px;
+        overflow-wrap: anywhere;
+    }
+
+    .shopping-table tbody td {
+        font-size: 11px;
+    }
+
+    .number-col {
+        width: 7%;
+    }
+
+    .item-col {
+        width: 28%;
+    }
+
+    .quantity-col {
+        width: 22%;
+    }
+
+    .amount-col {
+        width: 30%;
+    }
+
+    .action-col {
+        width: 9%;
+    }
+
+    .cell-input {
+        padding: 2px 1px;
+        font-size: 10px;
+    }
+
+    .remove-row {
+        font-size: 15px;
+    }
+
+    .budget-panel {
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .wallet-icon {
+        width: 50px;
+        padding-right: 10px;
+    }
+
+    .budget-details div {
+        font-size: 11px;
+        gap: 6px;
+    }
+
+    .list-actions button {
+        flex: 1;
+        padding: 11px 5px;
+        font-size: 12px;
+    }
+
+    .paper.market .list-heading {
+        padding: 13px;
+    }
 }
 
 @media print {
-    .topbar, .settings, .list-actions, .hint, #status { display: none !important; }
-    body, .app { width: 100%; margin: 0; background: white; }
-    .paper { box-shadow: none; }
-      }
+
+    body {
+        background: white;
+    }
+
+    .topbar,
+    .settings,
+    .list-actions,
+    .hint,
+    #status {
+        display: none !important;
+    }
+
+    .app {
+        width: 100%;
+        margin: 0;
+    }
+
+    .paper {
+        box-shadow: none;
+    }
+}
