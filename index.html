@@ -1,308 +1,140 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Listly — Shopping List Maker</title>
-
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f6f3ed">
+  <title>Listly — Shopping List Generator</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-
-    <header class="topbar">
-        <a href="#" class="brand">listly<span>.</span></a>
-
-        <button id="downloadBtn" class="download-btn">
-            ↓ Download PNG
-        </button>
-    </header>
-
-    <main class="app">
-
-        <section class="settings">
-
-            <div class="setting-group">
-                <label for="template">Choose your template</label>
-
-                <select id="template">
-                    <option value="original">1. Neon Table — Original</option>
-                    <option value="classic">2. Fresh & Simple</option>
-                    <option value="market">3. Market Day</option>
-                    <option value="minimal">4. Minimalist</option>
-                </select>
-            </div>
-
-            <details class="customise">
-                <summary>Customise your list</summary>
-
-                <div class="customise-grid">
-
-                    <label>
-                        Heading
-                        <input
-                            id="heading"
-                            type="text"
-                            value="Shopping List"
-                            maxlength="60"
-                        >
-                    </label>
-
-                    <label>
-                        Subtitle
-                        <input
-                            id="subtitle"
-                            type="text"
-                            value="Household Groceries & Essentials"
-                            maxlength="100"
-                        >
-                    </label>
-
-                    <label>
-                        Decorative text
-                        <input
-                            id="decorativeText"
-                            type="text"
-                            value="Good Food, Better Days"
-                            maxlength="60"
-                        >
-                    </label>
-
-                    <label>
-                        Footer message
-                        <input
-                            id="footerText"
-                            type="text"
-                            value="Small budget, big meals"
-                            maxlength="80"
-                        >
-                    </label>
-
-                    <label>
-                        Background colour
-                        <div class="colour-controls">
-                            <input
-                                id="background"
-                                type="color"
-                                value="#07151b"
-                                aria-label="Choose background colour"
-                            >
-
-                            <button
-                                id="resetBackground"
-                                type="button"
-                                class="reset-colour"
-                            >
-                                Reset colour
-                            </button>
-                        </div>
-                    </label>
-
-                </div>
-
-                <p class="small-note">
-                    Choose a colour visually. Reset colour restores the
-                    default background of the selected template.
-                </p>
-            </details>
-
-            <div class="budget-settings">
-                <label for="budget">Shopping budget (optional)</label>
-
-                <input
-                    id="budget"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="Enter your budget"
-                >
-
-                <div class="budget-summary">
-                    <div>
-                        <span>Total cost</span>
-                        <strong id="totalOutside">₦0.00</strong>
-                    </div>
-
-                    <div>
-                        <span>Remaining</span>
-                        <strong id="remainingOutside">—</strong>
-                    </div>
-                </div>
-            </div>
-
-        </section>
-
-
-        <!-- SHOPPING LIST TEMPLATE -->
-
-        <section class="workspace">
-
-            <div id="paper" class="paper original">
-
-                <header class="list-heading">
-
-                    <div class="cart-icon" aria-hidden="true">
-                        <svg viewBox="0 0 80 70" fill="none">
-                            <path
-                                d="M5 8 L15 8 L25 45 L63 45 L74 17 L20 17"
-                                stroke="currentColor"
-                                stroke-width="5"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                            />
-
-                            <circle cx="31" cy="58" r="5" fill="currentColor"/>
-                            <circle cx="59" cy="58" r="5" fill="currentColor"/>
-
-                            <path
-                                d="M5 22 L12 22 M3 32 L10 32 M8 42 L14 38"
-                                stroke="currentColor"
-                                stroke-width="4"
-                                stroke-linecap="round"
-                            />
-                        </svg>
-                    </div>
-
-                    <div class="heading-text">
-
-                        <h1 id="previewHeading" contenteditable="true">
-                            Shopping List
-                        </h1>
-
-                        <p id="previewSubtitle" contenteditable="true">
-                            Household Groceries & Essentials
-                        </p>
-
-                    </div>
-
-                    <div
-                        id="previewDecorative"
-                        class="heading-note"
-                        contenteditable="true"
-                    >
-                        Good Food<br>Better Days ♡
-                    </div>
-
-                </header>
-
-
-                <div class="table-wrap">
-
-                    <table class="shopping-table">
-
-                        <thead>
-                            <tr>
-                                <th class="number-col">#</th>
-                                <th class="item-col">Item</th>
-                                <th class="quantity-col">Quantity</th>
-                                <th class="amount-col">Amount (₦)</th>
-                                <th class="action-col" aria-label="Actions"></th>
-                            </tr>
-                        </thead>
-
-                        <tbody id="items"></tbody>
-
-                        <tfoot>
-                            <tr>
-                                <td colspan="3" class="total-label">
-                                    TOTAL
-                                </td>
-
-                                <td id="totalInside" class="total-value">
-                                    ₦0.00
-                                </td>
-
-                                <td class="action-col"></td>
-                            </tr>
-                        </tfoot>
-
-                    </table>
-
-                </div>
-
-
-                <section class="budget-panel" id="budgetPanel">
-
-                    <div class="wallet-icon" aria-hidden="true">
-                        <svg viewBox="0 0 70 65" fill="none">
-                            <path
-                                d="M9 20 L48 9 L51 22"
-                                stroke="currentColor"
-                                stroke-width="4"
-                                stroke-linejoin="round"
-                            />
-
-                            <path
-                                d="M8 20 L8 53 Q8 57 13 57 L59 57 Q63 57 63 53 L63 27 Q63 23 59 23 L13 23 Q8 23 8 20"
-                                stroke="currentColor"
-                                stroke-width="4"
-                                stroke-linejoin="round"
-                            />
-
-                            <path
-                                d="M48 34 L66 34 L66 46 L48 46 Q42 46 42 40 Q42 34 48 34"
-                                stroke="currentColor"
-                                stroke-width="4"
-                            />
-
-                            <circle cx="51" cy="40" r="2" fill="currentColor"/>
-                        </svg>
-                    </div>
-
-                    <div class="budget-details">
-
-                        <div>
-                            <span>Total Budget:</span>
-                            <strong id="budgetInside">—</strong>
-                        </div>
-
-                        <div>
-                            <span>Remaining:</span>
-                            <strong id="remainingInside">—</strong>
-                        </div>
-
-                    </div>
-
-                </section>
-
-
-                <footer
-                    id="previewFooter"
-                    class="list-footer"
-                    contenteditable="true"
-                >
-                    Small budget, big meals
-                </footer>
-
-            </div>
-
-
-            <div class="list-actions">
-
-                <button id="addRow" class="primary-btn">
-                    + Add item
-                </button>
-
-                <button id="clearRows" class="secondary-btn">
-                    Clear items
-                </button>
-
-            </div>
-
-            <p class="hint">
-                Click directly inside the list to edit its text. Enter
-                quantities and unit prices in the rows. Amounts and totals
-                are calculated automatically.
-            </p>
-
-            <p id="status" role="status" aria-live="polite"></p>
-
-        </section>
-
-    </main>
-
-    <script src="script.js"></script>
-
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Listly home"><span class="brand-mark">✓</span> listly<span class="brand-dot">.</span></a>
+    <nav><a href="#builder">Create a list</a><a href="#saved">Saved lists</a></nav>
+    <button id="newListBtn" class="button button-light" type="button">＋ New list</button>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow">YOUR LIST, YOUR STYLE</span>
+        <h1>Shopping, <span>sorted.</span></h1>
+        <p>Create a beautiful shopping list, keep an eye on your budget, and save it right in your browser.</p>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <div class="art-card art-card-back">🥑<br>🥕</div>
+        <div class="art-card art-card-front"><span>MY LIST</span><b>✓ Fresh produce</b><b>✓ Pantry staples</b><b>○ Little treats</b><small>made with care ✳</small></div>
+        <span class="art-spark">✳</span>
+      </div>
+    </section>
+
+    <section id="builder" class="workspace">
+      <div class="editor">
+        <div class="section-heading"><div><span class="step">01</span><h2>Build your list</h2></div><span class="muted">Add items and prices</span></div>
+
+        <label class="field-label" for="listTitle">List name</label>
+        <input id="listTitle" class="text-input" maxlength="70" value="My shopping list" placeholder="e.g. Monthly groceries">
+
+        <div class="two-col">
+          <div>
+            <label class="field-label" for="currency">Currency</label>
+            <select id="currency" class="text-input">
+              <option value="NGN">₦ Nigerian naira (NGN)</option>
+              <option value="USD">$ US dollar (USD)</option>
+              <option value="GBP">£ British pound (GBP)</option>
+              <option value="EUR">€ Euro (EUR)</option>
+              <option value="GHS">GH₵ Ghanaian cedi (GHS)</option>
+              <option value="KES">KSh Kenyan shilling (KES)</option>
+              <option value="ZAR">R South African rand (ZAR)</option>
+              <option value="CAD">CA$ Canadian dollar (CAD)</option>
+              <option value="INR">₹ Indian rupee (INR)</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label" for="budget">Budget (optional)</label>
+            <input id="budget" class="text-input" type="number" min="0" step="0.01" placeholder="Enter your budget">
+          </div>
+        </div>
+
+        <div class="items-heading"><h3>Your items</h3><span id="itemCount" class="count-pill">0 items</span></div>
+        <div id="itemsList" class="items-list"></div>
+        <button id="addItemBtn" class="add-item" type="button"><span>＋</span> Add an item</button>
+
+        <div class="editor-actions">
+          <button id="saveBtn" class="button button-primary" type="button">Save list</button>
+          <button id="clearBtn" class="button button-light" type="button">Clear items</button>
+        </div>
+        <p id="statusMessage" class="status-message" role="status" aria-live="polite"></p>
+      </div>
+
+      <aside class="preview-column">
+        <div class="section-heading"><div><span class="step">02</span><h2>Make it yours</h2></div></div>
+        <p class="muted small">Pick a template, then fine-tune the look.</p>
+
+        <div class="template-grid" id="templates">
+          <button class="template-option active" data-template="cream" type="button"><span class="template-swatch swatch-cream">✓ Fresh finds</span><b>Fresh & simple</b></button>
+          <button class="template-option" data-template="green" type="button"><span class="template-swatch swatch-green">✓ Market day</span><b>Garden green</b></button>
+          <button class="template-option" data-template="pink" type="button"><span class="template-swatch swatch-pink">♡ My picks</span><b>Soft & sweet</b></button>
+          <button class="template-option" data-template="dark" type="button"><span class="template-swatch swatch-dark">✦ THE LIST</span><b>Bold & modern</b></button>
+        </div>
+
+        <div class="customize">
+          <h3>Customize details</h3>
+          <label class="field-label">Accent colour</label>
+          <div class="color-row">
+            <button class="color-dot selected" data-color="#66845c" style="--dot:#66845c" aria-label="Sage green" type="button"></button>
+            <button class="color-dot" data-color="#d47761" style="--dot:#d47761" aria-label="Terracotta" type="button"></button>
+            <button class="color-dot" data-color="#9875b8" style="--dot:#9875b8" aria-label="Lavender" type="button"></button>
+            <button class="color-dot" data-color="#d1a33c" style="--dot:#d1a33c" aria-label="Mustard" type="button"></button>
+            <button class="color-dot" data-color="#3e7b91" style="--dot:#3e7b91" aria-label="Blue" type="button"></button>
+          </div>
+
+          <label class="field-label" for="subtitle">Subtitle / note</label>
+          <input id="subtitle" class="text-input" maxlength="100" placeholder="e.g. A little of everything">
+
+          <label class="check-row"><input id="showQuantities" type="checkbox" checked> Show quantities on the list</label>
+          <label class="check-row"><input id="showPrices" type="checkbox" checked> Show item prices on the list</label>
+        </div>
+
+        <button id="downloadBtn" class="button button-outline" type="button">↓ Download list as image</button>
+        <p class="tiny muted">Downloads a PNG you can share or print.</p>
+      </aside>
+    </section>
+
+    <section class="output-section">
+      <div class="section-heading"><div><span class="step">03</span><h2>Live preview</h2></div><span class="live-label"><span></span> Updates as you type</span></div>
+
+      <div id="listPreview" class="list-preview theme-cream">
+        <div class="preview-top">
+          <div>
+            <span class="preview-kicker">SHOPPING LIST</span>
+            <h2 id="previewTitle">Shopping List</h2>
+            <p id="previewSubtitle"></p>
+          </div>
+          <div class="preview-stamp">LIST<br><b>✳</b></div>
+        </div>
+
+        <div id="previewItems" class="preview-items">
+          <p class="empty-preview">Your items will appear here. Add your first item above!</p>
+        </div>
+
+        <div class="preview-bottom">
+          <div><span>TOTAL</span><strong id="previewTotal">₦0.00</strong></div>
+          <div id="previewBudgetBlock"><span>BUDGET</span><strong id="previewBudget">—</strong></div>
+          <div id="previewDifferenceBlock"><span id="differenceLabel">LEFT OVER</span><strong id="previewDifference">—</strong></div>
+        </div>
+        <div class="preview-footer">made with listly <span>✳</span></div>
+      </div>
+    </section>
+
+    <section id="saved" class="saved-section">
+      <div class="section-heading"><div><span class="step">04</span><h2>Saved lists</h2></div><span class="muted">Stored on this device</span></div>
+      <div id="savedLists" class="saved-grid"><p class="empty-saved">Your saved lists will show up here.</p></div>
+      <p class="tiny muted">Saved lists use this browser's local storage. They won't automatically sync to other devices or browsers.</p>
+    </section>
+  </main>
+
+  <footer><a class="brand" href="#"><span class="brand-mark">✓</span> listly<span class="brand-dot">.</span></a><span>Make a list. Make it yours.</span></footer>
+  <script src="script.js"></script>
 </body>
 </html>
